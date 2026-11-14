@@ -117,7 +117,6 @@ fun MiniPlayer(
     player: PlayerUiState,
     vm: PlayerViewModel,
     onClick: () -> Unit,
-    padForSystemBar: Boolean,
 ) {
     val meta = player.current?.mediaMetadata
     var progress by remember { mutableFloatStateOf(0f) }
@@ -128,23 +127,13 @@ fun MiniPlayer(
             delay(500)
         }
     }
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(22.dp),
-        tonalElevation = 2.dp,
-        modifier = Modifier
-            .then(if (padForSystemBar) Modifier.navigationBarsPadding() else Modifier)
-            .padding(horizontal = 10.dp, vertical = 8.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .clickable(onClick = onClick),
-    ) {
-        Column {
+    // No container of its own: it lives inside the bottom dock, sharing the nav bar's surface.
+    Column(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
             Row(
-                Modifier.padding(start = 10.dp, end = 4.dp, top = 8.dp, bottom = 6.dp),
+                Modifier.padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ArtImage(container.artFor(player.currentId)?.copy(sizePx = 160), Modifier.size(46.dp), RoundedCornerShape(12.dp))
+                ArtImage(container.artFor(player.currentId)?.copy(sizePx = 160), Modifier.size(48.dp), RoundedCornerShape(12.dp))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -169,11 +158,11 @@ fun MiniPlayer(
             }
             LinearProgressIndicator(
                 progress = { progress },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 6.dp).height(2.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(2.dp),
+                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                 drawStopIndicator = {},
                 gapSize = 0.dp,
             )
-        }
     }
 }
 

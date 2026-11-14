@@ -20,6 +20,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -36,6 +40,7 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
@@ -51,6 +56,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -100,7 +106,8 @@ fun AriaRoot(container: AppContainer) {
     }
     LaunchedEffect(granted) { if (granted) container.library.refresh() }
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    // A Surface (not a bare Box) so text and icons inherit the theme's content colour in dark mode.
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         if (granted) {
             Library(container)
         } else {
@@ -140,7 +147,7 @@ private fun Library(container: AppContainer) {
     val showNavBar = route == null || route == "home" || route.startsWith("album/") || route.startsWith("artist/")
 
     val hasMini = player.current != null
-    val bottomPadding: Dp = (if (hasMini) 84.dp else 0.dp) + (if (showNavBar) 80.dp else 0.dp) + 12.dp
+    val bottomPadding: Dp = (if (hasMini) 78.dp else 0.dp) + (if (showNavBar) 80.dp else 8.dp) + 8.dp
 
     CompositionLocalProvider(LocalBottomPadding provides bottomPadding) {
         Box(Modifier.fillMaxSize()) {
@@ -205,32 +212,42 @@ private fun Library(container: AppContainer) {
                 }
             }
 
-            Column(Modifier.align(Alignment.BottomCenter)) {
-                AnimatedVisibility(
-                    visible = hasMini && !nowPlayingOpen,
-                    enter = slideInVertically { it } + fadeIn(),
-                    exit = slideOutVertically { it } + fadeOut(),
+            // One dock for mini player + nav bar: a single surface, so they read as one piece.
+            AnimatedVisibility(
+                visible = hasMini || showNavBar,
+                enter = slideInVertically { it },
+                exit = slideOutVertically { it },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 ) {
-                    MiniPlayer(
-                        container = container,
-                        player = player,
-                        vm = vm,
-                        onClick = { nowPlayingOpen = true },
-                        padForSystemBar = !showNavBar,
-                    )
-                }
-                AnimatedVisibility(
-                    visible = showNavBar && !nowPlayingOpen,
-                    enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                    exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
-                ) {
-                    AriaNavigationBar(
-                        selected = tab.takeIf { route == "home" },
-                        onSelect = { t ->
-                            tab = t
-                            if (route != "home") nav.popBackStack("home", inclusive = false)
-                        },
-                    )
+                    Column {
+                        AnimatedVisibility(
+                            visible = hasMini,
+                            enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
+                            exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut(),
+                        ) {
+                            MiniPlayer(container = container, player = player, vm = vm, onClick = { nowPlayingOpen = true })
+                        }
+                        AnimatedVisibility(
+                            visible = showNavBar,
+                            enter = expandVertically(expandFrom = Alignment.Top),
+                            exit = shrinkVertically(shrinkTowards = Alignment.Top),
+                        ) {
+                            AriaNavigationBar(
+                                selected = tab.takeIf { route == "home" },
+                                onSelect = { t ->
+                                    tab = t
+                                    if (route != "home") nav.popBackStack("home", inclusive = false)
+                                },
+                            )
+                        }
+                        AnimatedVisibility(visible = !showNavBar) {
+                            Spacer(Modifier.windowInsetsPadding(WindowInsets.navigationBars).height(8.dp))
+                        }
+                    }
                 }
             }
 
@@ -256,7 +273,7 @@ private fun Library(container: AppContainer) {
 
 @Composable
 private fun AriaNavigationBar(selected: HomeTab?, onSelect: (HomeTab) -> Unit) {
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+    NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp) {
         HomeTab.entries.forEach { t ->
             val isSelected = t == selected
             NavigationBarItem(
