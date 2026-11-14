@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.0"
+agp = "9.1.1"
 kotlin = "2.2.20"
 coreKtx = "1.15.0"
 activityCompose = "1.9.3"
@@ -44,5 +44,4 @@ jaudiotagger = { group = "net.jthink", name = "jaudiotagger", version.ref = "jau
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
