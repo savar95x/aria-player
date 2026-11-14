@@ -146,7 +146,7 @@ fun MiniPlayer(
             ) {
                 // Fixed slot so the row doesn't reflow while the art flies up to the now-playing page.
                 Box(Modifier.size(48.dp)) {
-                    AnimatedVisibility(visible = artVisible, enter = fadeIn(), exit = fadeOut()) {
+                    androidx.compose.animation.AnimatedVisibility(visible = artVisible, enter = fadeIn(), exit = fadeOut()) {
                         CompositionLocalProvider(LocalAnimatedScope provides this) {
                             ArtImage(
                                 container.artFor(player.currentId)?.copy(sizePx = 160),
