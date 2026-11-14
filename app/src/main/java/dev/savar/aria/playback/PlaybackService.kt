@@ -176,8 +176,13 @@ class PlaybackService : MediaSessionService() {
         player.pause()
         player.stop()
         scope.launch {
-            delay(300) // let the command result reach the caller
+            delay(200) // let the command result reach the caller
+            // Releasing the session disconnects the app's controller, so nothing re-binds and
+            // restarts us; stopSelf() means the system won't "restart a crashed service" either.
+            session?.release()
+            session = null
             stopSelf()
+            delay(400)
             Process.killProcess(Process.myPid())
         }
     }
