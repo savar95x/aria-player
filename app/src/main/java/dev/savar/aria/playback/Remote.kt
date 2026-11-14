@@ -5,7 +5,6 @@ import android.os.SystemClock
 import androidx.media3.session.SessionCommand
 
 /**
- * The player runs in its own process (":playback") so it survives the UI being killed.
  * Everything that isn't a standard player command goes over these custom session commands,
  * and the sleep-timer state comes back as session extras.
  */
@@ -15,7 +14,6 @@ object Remote {
     const val SLEEP_EXTEND = "aria.sleep.extend" // ARG_MINUTES
     const val SLEEP_FINISH_SONG = "aria.sleep.finishSong" // ARG_FINISH_SONG
     const val SLEEP_CANCEL = "aria.sleep.cancel"
-    const val SHUTDOWN = "aria.shutdown"
 
     const val ARG_ACTION = "action"
     const val ARG_MINUTES = "minutes"
@@ -25,7 +23,7 @@ object Remote {
     private const val EXTRA_SLEEP_FINISH = "sleep.finishSong"
     private const val EXTRA_SLEEP_WAITING = "sleep.waiting"
 
-    val commands = listOf(ACTION, SLEEP_START, SLEEP_EXTEND, SLEEP_FINISH_SONG, SLEEP_CANCEL, SHUTDOWN)
+    val commands = listOf(ACTION, SLEEP_START, SLEEP_EXTEND, SLEEP_FINISH_SONG, SLEEP_CANCEL)
 
     fun command(action: String) = SessionCommand(action, Bundle.EMPTY)
 

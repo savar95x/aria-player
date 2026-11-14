@@ -12,6 +12,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import dev.savar.aria.ui.LocalAnimatedScope
 import dev.savar.aria.ui.Motion
 import dev.savar.aria.ui.sharedArt
+import dev.savar.aria.ui.verticalSwipe
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -234,7 +235,6 @@ fun NowPlayingScreen(
     var showSleep by remember { mutableStateOf(false) }
     val sleep by vm.sleep.collectAsStateWithLifecycle()
     val now = rememberTicker(sleep.active)
-    val collapseThreshold = with(LocalDensity.current) { 120.dp.toPx() }
 
     Box(
         Modifier
@@ -243,19 +243,8 @@ fun NowPlayingScreen(
             .background(Brush.verticalGradient(0f to accent.copy(alpha = 0.42f), 0.75f to bg))
             // Swallow taps so they don't reach the library underneath; drag down to collapse.
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-            .pointerInput(Unit) {
-                var total = 0f
-                detectVerticalDragGestures(
-                    onDragStart = { total = 0f },
-                    // Down collapses the player; up opens the queue.
-                    onDragEnd = {
-                        when {
-                            total > collapseThreshold -> onCollapse()
-                            total < -collapseThreshold -> showQueue = true
-                        }
-                    },
-                ) { _, dy -> total += dy }
-            },
+            // Down collapses the player; up opens the queue.
+            .verticalSwipe(onSwipeUp = { showQueue = true }, onSwipeDown = onCollapse),
     ) {
         Column(
             Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp),

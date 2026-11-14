@@ -26,6 +26,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.unit.dp
 
 /** Material 3 motion tokens. */
 object Motion {
@@ -94,5 +98,35 @@ fun Modifier.sharedArt(key: String): Modifier {
             animatedVisibilityScope = animated,
             boundsTransform = Motion.ArtBounds,
         )
+    }
+}
+
+/**
+ * Light vertical swipe: fires after a short drag (~28dp past touch slop) or on any quick flick.
+ */
+fun Modifier.verticalSwipe(
+    onSwipeUp: (() -> Unit)? = null,
+    onSwipeDown: (() -> Unit)? = null,
+): Modifier = pointerInput(onSwipeUp != null, onSwipeDown != null) {
+    val distance = 28.dp.toPx()
+    val fling = 350.dp.toPx() // per second
+    val tracker = VelocityTracker()
+    var total = 0f
+    detectVerticalDragGestures(
+        onDragStart = {
+            total = 0f
+            tracker.resetTracking()
+        },
+        onDragEnd = {
+            val velocity = tracker.calculateVelocity().y
+            when {
+                total < 0 && (total < -distance || velocity < -fling) -> onSwipeUp?.invoke()
+                total > 0 && (total > distance || velocity > fling) -> onSwipeDown?.invoke()
+            }
+        },
+    ) { change, dy ->
+        change.consume()
+        total += dy
+        tracker.addPosition(change.uptimeMillis, change.position)
     }
 }

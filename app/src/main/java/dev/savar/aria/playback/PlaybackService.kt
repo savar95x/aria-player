@@ -3,7 +3,6 @@ package dev.savar.aria.playback
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
-import android.os.Process
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -40,9 +39,8 @@ import kotlinx.coroutines.launch
 enum class RemoteAction { PlayPause, Next, Previous }
 
 /**
- * Runs in its own process (":playback", see the manifest). If the system kills the UI process
- * (e.g. OxygenOS when you clear recents) this one keeps playing. The UI, widget and sleep-timer
- * controls all reach it through the media session.
+ * Media3 playback service. The UI, widget and sleep-timer controls reach it through the media
+ * session (custom commands in [Remote]), so it doesn't depend on sharing memory with the UI.
  */
 @OptIn(UnstableApi::class)
 class PlaybackService : MediaSessionService() {
@@ -170,23 +168,6 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    /** "Stop player" in settings: save, clear the notification and end this process. */
-    private fun shutdown() {
-        saveQueue()
-        player.pause()
-        player.stop()
-        scope.launch {
-            delay(200) // let the command result reach the caller
-            // Releasing the session disconnects the app's controller, so nothing re-binds and
-            // restarts us; stopSelf() means the system won't "restart a crashed service" either.
-            session?.release()
-            session = null
-            stopSelf()
-            delay(400)
-            Process.killProcess(Process.myPid())
-        }
-    }
-
     private fun pushWidget() {
         WidgetUpdateReceiver.send(this, player.currentMediaItem, player.mediaMetadata, player.isPlaying || player.playWhenReady)
     }
@@ -256,7 +237,6 @@ class PlaybackService : MediaSessionService() {
                 Remote.SLEEP_EXTEND -> sleepTimer.extend(args.getInt(Remote.ARG_MINUTES, 10))
                 Remote.SLEEP_FINISH_SONG -> sleepTimer.setFinishSong(args.getBoolean(Remote.ARG_FINISH_SONG))
                 Remote.SLEEP_CANCEL -> sleepTimer.cancel()
-                Remote.SHUTDOWN -> shutdown()
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }

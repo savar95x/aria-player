@@ -217,11 +217,6 @@ class PlayerViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun cancelSleep() = send(Remote.SLEEP_CANCEL)
 
-    /** Ends the player process entirely; it starts again next time you play something. */
-    fun stopPlayer() {
-        controller?.sendCustomCommand(Remote.command(Remote.SHUTDOWN), Bundle.EMPTY)
-    }
-
     override fun onCleared() {
         controller?.removeListener(listener)
         controller?.release()

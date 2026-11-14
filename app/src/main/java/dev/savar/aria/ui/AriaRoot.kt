@@ -11,7 +11,6 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.graphics.Brush
@@ -240,7 +239,6 @@ private fun Library(container: AppContainer) {
                         container,
                         onBack = { nav.popBackStack() },
                         onFolders = { nav.navigate("folders") },
-                        onStopPlayer = vm::stopPlayer,
                     )
                 }
                 screen("folders") {
@@ -267,18 +265,7 @@ private fun Library(container: AppContainer) {
                 val rim = MaterialTheme.colorScheme.outlineVariant
                 Surface(
                     // Swipe up anywhere on the dock (just above the home gesture) to open the player.
-                    modifier = Modifier.pointerInput(hasMini) {
-                        if (!hasMini) return@pointerInput
-                        val threshold = 36.dp.toPx()
-                        var total = 0f
-                        detectVerticalDragGestures(
-                            onDragStart = { total = 0f },
-                            onDragEnd = { if (total < -threshold) nowPlayingOpen = true },
-                        ) { change, dy ->
-                            change.consume()
-                            total += dy
-                        }
-                    },
+                    modifier = if (hasMini) Modifier.verticalSwipe(onSwipeUp = { nowPlayingOpen = true }) else Modifier,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                     border = BorderStroke(
