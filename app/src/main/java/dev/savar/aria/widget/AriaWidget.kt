@@ -65,10 +65,11 @@ class AriaWidgetReceiver : GlanceAppWidgetReceiver() {
 
 private val Small = DpSize(110.dp, 110.dp)
 private val Wide = DpSize(220.dp, 110.dp)
+private val WideRoomy = DpSize(280.dp, 150.dp)
 private val Tall = DpSize(220.dp, 230.dp)
 
 class AriaWidget : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(setOf(Small, Wide, Tall))
+    override val sizeMode = SizeMode.Responsive(setOf(Small, Wide, WideRoomy, Tall))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         WidgetState.ensureLoaded(context)

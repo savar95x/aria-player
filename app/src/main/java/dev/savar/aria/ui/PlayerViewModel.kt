@@ -57,7 +57,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             val token = SessionToken(app, ComponentName(app, PlaybackService::class.java))
-            val c = MediaController.Builder(app, token).buildAsync().await()
+            val c = runCatching { MediaController.Builder(app, token).buildAsync().await() }.getOrNull()
+                ?: return@launch
             controller = c
             c.addListener(listener)
             refresh(queueChanged = true)
