@@ -118,6 +118,8 @@ class LyricsRepository(private val context: Context) {
     // ---- LRCLIB ------------------------------------------------------------------------------
 
     private fun fetchExact(title: String, artist: String, album: String?, durationMs: Long): Lyrics? {
+        // LRCLIB's exact lookup needs album and duration; without them go straight to search.
+        if (album.isNullOrBlank() || durationMs <= 0 || artist.isBlank()) return null
         val url = buildString {
             append("https://lrclib.net/api/get?track_name=").append(Uri.encode(title))
             append("&artist_name=").append(Uri.encode(artist))
@@ -133,8 +135,12 @@ class LyricsRepository(private val context: Context) {
 
     private fun fetchSearch(title: String, artist: String, durationMs: Long): Lyrics? {
         val url = "https://lrclib.net/api/search?track_name=" + Uri.encode(title) +
-            "&artist_name=" + Uri.encode(artist)
-        return pickBest(JSONArray(String(get(url))), durationMs, strict = true)
+            (if (artist.isNotBlank()) "&artist_name=" + Uri.encode(artist) else "")
+        return try {
+            pickBest(JSONArray(String(get(url))), durationMs, strict = true)
+        } catch (e: FileNotFoundException) {
+            null
+        }
     }
 
     /** Closest duration wins, synced preferred; [strict] rejects matches more than 8s off. */
@@ -169,7 +175,8 @@ class LyricsRepository(private val context: Context) {
         conn.readTimeout = 12_000
         conn.setRequestProperty("User-Agent", "Aria (https://github.com/savar95x/aria-player)")
         try {
-            if (conn.responseCode == 404) throw FileNotFoundException(url)
+            // 4xx = no match / bad query: callers treat it as "not found", not as a failure.
+            if (conn.responseCode in 400..499) throw FileNotFoundException(url)
             if (conn.responseCode !in 200..299) error("HTTP ${conn.responseCode}")
             return conn.inputStream.use { it.readBytes() }
         } finally {
