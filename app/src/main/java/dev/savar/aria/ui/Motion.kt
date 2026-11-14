@@ -37,24 +37,23 @@ object Motion {
     val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
     /** Springy but settled: used for art flying between screens. */
-    val ArtBounds = BoundsTransform { _: Rect, _: Rect -> spring(dampingRatio = 0.86f, stiffness = 380f) }
+    val ArtBounds = BoundsTransform { _: Rect, _: Rect -> spring(dampingRatio = 0.9f, stiffness = 700f) }
 
     // Shared X-axis: the new screen slides in a little and fades up; the old one drifts the other way.
     private const val Shift = 10
 
     val Enter: AnimatedContentTransitionScope<*>.() -> EnterTransition = {
-        slideInHorizontally(tween(400, easing = EmphasizedDecelerate)) { it / Shift } +
-            fadeIn(tween(250, delayMillis = 60))
+        slideInHorizontally(tween(300, easing = EmphasizedDecelerate)) { it / Shift } + fadeIn(tween(180))
     }
     val Exit: AnimatedContentTransitionScope<*>.() -> ExitTransition = {
-        slideOutHorizontally(tween(250, easing = EmphasizedAccelerate)) { -it / Shift } + fadeOut(tween(120))
+        slideOutHorizontally(tween(200, easing = EmphasizedAccelerate)) { -it / Shift } + fadeOut(tween(100))
     }
+    // Going back should feel instant: no delay, shorter curve.
     val PopEnter: AnimatedContentTransitionScope<*>.() -> EnterTransition = {
-        slideInHorizontally(tween(400, easing = EmphasizedDecelerate)) { -it / Shift } +
-            fadeIn(tween(250, delayMillis = 60))
+        slideInHorizontally(tween(240, easing = EmphasizedDecelerate)) { -it / Shift } + fadeIn(tween(150))
     }
     val PopExit: AnimatedContentTransitionScope<*>.() -> ExitTransition = {
-        slideOutHorizontally(tween(250, easing = EmphasizedAccelerate)) { it / Shift } + fadeOut(tween(120))
+        slideOutHorizontally(tween(180, easing = EmphasizedAccelerate)) { it / Shift } + fadeOut(tween(90))
     }
 
     /** Fade-through for switching bottom-nav destinations. */

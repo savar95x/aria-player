@@ -47,6 +47,14 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Lyrics
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.animation.togetherWith
+import dev.savar.aria.data.LyricsRequest
+import dev.savar.aria.data.LyricsState
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -236,6 +244,25 @@ fun NowPlayingScreen(
     val sleep by vm.sleep.collectAsStateWithLifecycle()
     val now = rememberTicker(sleep.active)
 
+    // Lyrics: looked up only while the lyrics view is open, then cached per song.
+    var showLyrics by rememberSaveable { mutableStateOf(false) }
+    val song = player.currentId?.let { container.library.song(it) }
+    val lyricsRequest = remember(player.current?.mediaId, meta.titleText, song) {
+        LyricsRequest(
+            key = song?.id?.toString() ?: ("link_" + (meta.titleText + "|" + meta.artistText).hashCode()),
+            title = song?.title ?: meta.titleText,
+            artist = song?.artist ?: meta.artistText,
+            album = song?.album?.takeUnless { it == "Unknown album" },
+            durationMs = song?.durationMs ?: player.durationMs,
+            path = song?.path,
+        )
+    }
+    var lyrics by remember(lyricsRequest) { mutableStateOf<LyricsState>(LyricsState.Loading) }
+    LaunchedEffect(lyricsRequest, showLyrics) {
+        if (showLyrics && lyrics == LyricsState.Loading) lyrics = container.lyrics.load(lyricsRequest)
+    }
+    val scope = rememberCoroutineScope()
+
     Box(
         Modifier
             .fillMaxSize()
@@ -270,6 +297,48 @@ fun NowPlayingScreen(
                 )
             }
 
+            AnimatedContent(
+                targetState = showLyrics,
+                transitionSpec = { fadeIn(tween(240)) togetherWith fadeOut(tween(140)) },
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                label = "lyricsMode",
+            ) { lyricsMode ->
+            if (lyricsMode) {
+                Column(Modifier.fillMaxSize()) {
+                    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        ArtImage(art?.copy(sizePx = 160), Modifier.size(52.dp), RoundedCornerShape(12.dp))
+                        Spacer(Modifier.width(14.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                meta.titleText,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                meta.artistText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    LyricsPane(
+                        state = lyrics,
+                        vm = vm,
+                        onSearch = { q ->
+                            scope.launch {
+                                lyrics = LyricsState.Loading
+                                lyrics = container.lyrics.search(lyricsRequest, q)
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            } else {
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.weight(0.6f))
             ArtImage(
                 art?.copy(sizePx = 1024),
@@ -303,11 +372,14 @@ fun NowPlayingScreen(
                 )
             }
             }
+            }
+            }
+            }
             Spacer(Modifier.height(16.dp))
             SeekBar(player, vm)
             Spacer(Modifier.height(8.dp))
             Controls(player, vm)
-            Spacer(Modifier.weight(0.4f))
+            Spacer(Modifier.height(20.dp))
 
             // Bottom actions
             Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -315,6 +387,16 @@ fun NowPlayingScreen(
                     Icon(Icons.Rounded.Bedtime, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(if (sleep.active) sleepLabel(sleep, now) else "Sleep")
+                }
+                TextButton(
+                    onClick = { showLyrics = !showLyrics },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = if (showLyrics) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                ) {
+                    Icon(Icons.Rounded.Lyrics, null, Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Lyrics")
                 }
                 TextButton(onClick = { showQueue = true }) {
                     Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, Modifier.size(20.dp))

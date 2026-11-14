@@ -327,7 +327,6 @@ private fun AlbumsTab(
                 is GridEntry.Item -> Column(
                     Modifier
                         .animateItem()
-                        .clip(RoundedCornerShape(18.dp))
                         .combinedClickable(
                             onClick = { onAlbum(e.album.id) },
                             onLongClick = {

@@ -4,6 +4,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
 import dev.savar.aria.R
@@ -32,11 +33,17 @@ fun googleFontFamily(name: String): FontFamily = fontCache.getOrPut(name) {
     )
 }
 
+/** Material's default sizes read a bit large on a phone this dense; scale every style down. */
+private const val TextScale = 0.92f
+
 fun typographyFor(font: String?): Typography {
+    val family = font?.let { googleFontFamily(it) }
     val base = Typography()
-    if (font == null) return base
-    val family = googleFontFamily(font)
-    fun TextStyle.f() = copy(fontFamily = family)
+    fun TextStyle.f() = copy(
+        fontFamily = family ?: fontFamily,
+        fontSize = fontSize * TextScale,
+        lineHeight = if (lineHeight.isSpecified) lineHeight * TextScale else lineHeight,
+    )
     return Typography(
         displayLarge = base.displayLarge.f(),
         displayMedium = base.displayMedium.f(),
