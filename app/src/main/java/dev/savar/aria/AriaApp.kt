@@ -11,20 +11,14 @@ import dev.savar.aria.data.QueueStore
 import dev.savar.aria.data.SettingsStore
 import dev.savar.aria.data.SongArtFetcher
 import dev.savar.aria.data.SongArtKeyer
-import dev.savar.aria.playback.SleepTimer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class AriaApp : Application(), SingletonImageLoader.Factory {
-    lateinit var container: AppContainer
-        private set
-
-    override fun onCreate() {
-        super.onCreate()
-        container = AppContainer(this)
-    }
+    /** Lazy: the player process only touches the bits it needs (saved queue), never settings/library. */
+    val container: AppContainer by lazy { AppContainer(this) }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader =
         ImageLoader.Builder(context)
@@ -36,13 +30,12 @@ class AriaApp : Application(), SingletonImageLoader.Factory {
             .build()
 }
 
-/** Hand-rolled DI: everything lives for the process lifetime. */
+/** Hand-rolled DI: everything lives for the process lifetime, created on first use. */
 class AppContainer(context: Context) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    val settings = SettingsStore(context, scope)
-    val library = MusicRepository(context, settings, scope)
-    val queueStore = QueueStore(context)
-    val sleepTimer = SleepTimer(scope)
+    val settings by lazy { SettingsStore(context, scope) }
+    val library by lazy { MusicRepository(context, settings, scope) }
+    val queueStore by lazy { QueueStore(context) }
 
     /** A link shared/opened into Aria, waiting for the player to pick it up. */
     val pendingLink = MutableStateFlow<String?>(null)

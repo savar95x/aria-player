@@ -65,6 +65,8 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -214,22 +216,21 @@ private fun SongsTab(
     Box(Modifier.fillMaxSize()) {
     LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = listBottomPadding()) {
         item(key = "header") {
+            // Light, text-weight controls: the list should be the loudest thing on screen.
             Row(
-                Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                FilledTonalButton(onClick = { vm.play(songs, shuffle = true) }) {
+                TextButton(onClick = { vm.play(songs, shuffle = true) }) {
                     Icon(Icons.Rounded.Shuffle, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Shuffle")
+                    Text("Shuffle all")
+                    Text(
+                        "  ·  ${songs.size}",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    "${songs.size} songs",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
+                Spacer(Modifier.weight(1f))
                 SortMenu(sort, onSort)
             }
         }
@@ -258,7 +259,14 @@ private fun BoxScope.scrollerModifier(): Modifier = Modifier
 private fun SortMenu(sort: SongSort, onSort: (SongSort) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) { Icon(Icons.AutoMirrored.Rounded.Sort, "Sort") }
+        TextButton(
+            onClick = { open = true },
+            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+        ) {
+            Text(sort.label)
+            Spacer(Modifier.width(6.dp))
+            Icon(Icons.AutoMirrored.Rounded.Sort, "Sort", Modifier.size(18.dp))
+        }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             SongSort.entries.forEach { option ->
                 DropdownMenuItem(
@@ -653,7 +661,7 @@ private fun SearchPill(onSearch: () -> Unit, onSettings: () -> Unit) {
         Spacer(Modifier.width(14.dp))
         Text(
             "Search or paste a link",
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
@@ -669,12 +677,12 @@ private fun PillRow(modifier: Modifier = Modifier, content: @Composable RowScope
     Row(
         Modifier
             .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .fillMaxWidth()
-            .height(56.dp)
+            .height(50.dp)
             .sharedContainer("search-pill")
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .then(modifier)
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,

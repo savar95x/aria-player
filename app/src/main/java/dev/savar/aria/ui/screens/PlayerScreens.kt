@@ -232,7 +232,7 @@ fun NowPlayingScreen(
     val bg = MaterialTheme.colorScheme.background
     var showQueue by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
-    val sleep by container.sleepTimer.state.collectAsStateWithLifecycle()
+    val sleep by vm.sleep.collectAsStateWithLifecycle()
     val now = rememberTicker(sleep.active)
     val collapseThreshold = with(LocalDensity.current) { 120.dp.toPx() }
 
@@ -247,7 +247,13 @@ fun NowPlayingScreen(
                 var total = 0f
                 detectVerticalDragGestures(
                     onDragStart = { total = 0f },
-                    onDragEnd = { if (total > collapseThreshold) onCollapse() },
+                    // Down collapses the player; up opens the queue.
+                    onDragEnd = {
+                        when {
+                            total > collapseThreshold -> onCollapse()
+                            total < -collapseThreshold -> showQueue = true
+                        }
+                    },
                 ) { _, dy -> total += dy }
             },
     ) {
@@ -331,7 +337,7 @@ fun NowPlayingScreen(
     }
 
     if (showQueue) QueueSheet(player, vm) { showQueue = false }
-    if (showSleep) SleepTimerSheet(container.sleepTimer) { showSleep = false }
+    if (showSleep) SleepTimerSheet(vm) { showSleep = false }
 }
 
 @Composable
@@ -488,8 +494,8 @@ private fun sleepLabel(state: SleepTimer.State, now: Long): String {
 }
 
 @Composable
-private fun SleepTimerSheet(timer: SleepTimer, onDismiss: () -> Unit) {
-    val state by timer.state.collectAsStateWithLifecycle()
+private fun SleepTimerSheet(vm: PlayerViewModel, onDismiss: () -> Unit) {
+    val state by vm.sleep.collectAsStateWithLifecycle()
     val now = rememberTicker(state.active)
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
@@ -507,11 +513,11 @@ private fun SleepTimerSheet(timer: SleepTimer, onDismiss: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             val presets = listOf(10, 15, 30, 45, 60, 90)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                presets.take(3).forEach { m -> PresetChip(m, Modifier.weight(1f)) { timer.start(m, state.finishSong) } }
+                presets.take(3).forEach { m -> PresetChip(m, Modifier.weight(1f)) { vm.startSleep(m, state.finishSong) } }
             }
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                presets.drop(3).forEach { m -> PresetChip(m, Modifier.weight(1f)) { timer.start(m, state.finishSong) } }
+                presets.drop(3).forEach { m -> PresetChip(m, Modifier.weight(1f)) { vm.startSleep(m, state.finishSong) } }
             }
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -523,13 +529,13 @@ private fun SleepTimerSheet(timer: SleepTimer, onDismiss: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Switch(checked = state.finishSong, onCheckedChange = timer::setFinishSong)
+                Switch(checked = state.finishSong, onCheckedChange = vm::setSleepFinishSong)
             }
             if (state.active) {
                 Spacer(Modifier.height(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = { timer.cancel() }, modifier = Modifier.weight(1f)) { Text("Turn off") }
-                    FilledTonalButton(onClick = { timer.extend(10) }, modifier = Modifier.weight(1f), enabled = !state.waitingForSongEnd) {
+                    OutlinedButton(onClick = { vm.cancelSleep() }, modifier = Modifier.weight(1f)) { Text("Turn off") }
+                    FilledTonalButton(onClick = { vm.extendSleep(10) }, modifier = Modifier.weight(1f), enabled = !state.waitingForSongEnd) {
                         Text("+10 min")
                     }
                 }

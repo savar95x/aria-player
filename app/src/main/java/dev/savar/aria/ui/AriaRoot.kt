@@ -13,7 +13,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
-import dev.savar.aria.ui.screens.QueueSheet
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
@@ -164,8 +163,6 @@ private fun Library(container: AppContainer) {
     val hasMini = player.current != null
     val bottomPadding: Dp = (if (hasMini) 78.dp else 0.dp) + (if (showNavBar) 80.dp else 8.dp) + 8.dp
 
-    var showQueue by remember { mutableStateOf(false) }
-
     // Links shared into Aria play as soon as the player is connected.
     val pendingLink by container.pendingLink.collectAsStateWithLifecycle()
     LaunchedEffect(pendingLink, player.connected) {
@@ -239,7 +236,12 @@ private fun Library(container: AppContainer) {
                     )
                 }
                 screen("settings") {
-                    SettingsScreen(container, onBack = { nav.popBackStack() }, onFolders = { nav.navigate("folders") })
+                    SettingsScreen(
+                        container,
+                        onBack = { nav.popBackStack() },
+                        onFolders = { nav.navigate("folders") },
+                        onStopPlayer = vm::stopPlayer,
+                    )
                 }
                 screen("folders") {
                     FoldersScreen(container, onBack = { nav.popBackStack() })
@@ -264,14 +266,14 @@ private fun Library(container: AppContainer) {
                 // sides: separates the dock from a pure-black list without boxing it in.
                 val rim = MaterialTheme.colorScheme.outlineVariant
                 Surface(
-                    // Swipe up anywhere on the dock (just above the home gesture) for the queue.
+                    // Swipe up anywhere on the dock (just above the home gesture) to open the player.
                     modifier = Modifier.pointerInput(hasMini) {
                         if (!hasMini) return@pointerInput
                         val threshold = 36.dp.toPx()
                         var total = 0f
                         detectVerticalDragGestures(
                             onDragStart = { total = 0f },
-                            onDragEnd = { if (total < -threshold) showQueue = true },
+                            onDragEnd = { if (total < -threshold) nowPlayingOpen = true },
                         ) { change, dy ->
                             change.consume()
                             total += dy
@@ -350,8 +352,6 @@ private fun Library(container: AppContainer) {
        }
       }
     }
-    if (showQueue && hasMini) QueueSheet(player, vm) { showQueue = false }
-
     // Predictive back: the sheet shrinks with your finger, and closes if you commit.
     PredictiveBackHandler(enabled = nowPlayingOpen) { events ->
         try {

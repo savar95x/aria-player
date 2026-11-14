@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -109,7 +110,7 @@ private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChang
 }
 
 @Composable
-fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () -> Unit) {
+fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () -> Unit, onStopPlayer: () -> Unit) {
     val settings by container.settings.settings.collectAsStateWithLifecycle()
     val s = settings ?: return
     val store = container.settings
@@ -178,6 +179,15 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
 
             SectionTitle("Playback")
             BackgroundPlaybackRow()
+            ListItem(
+                headlineContent = { Text("Stop player") },
+                supportingContent = {
+                    Text("Aria plays from its own background process. This shuts it down completely; it starts again when you play something.")
+                },
+                leadingContent = { Icon(Icons.Rounded.PowerSettingsNew, null) },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                modifier = Modifier.clickable(onClick = onStopPlayer),
+            )
 
             SectionTitle("About")
             ListItem(

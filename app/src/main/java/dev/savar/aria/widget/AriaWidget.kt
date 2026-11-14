@@ -53,7 +53,9 @@ import androidx.media3.session.SessionToken
 import dev.savar.aria.MainActivity
 import dev.savar.aria.R
 import dev.savar.aria.playback.PlaybackService
+import dev.savar.aria.playback.Remote
 import dev.savar.aria.playback.RemoteAction
+import android.os.Bundle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.await
@@ -258,19 +260,18 @@ private val ActionKey = ActionParameters.Key<String>("action")
 
 class MediaActionCallback : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        val action = parameters[ActionKey]?.let { runCatching { RemoteAction.valueOf(it) }.getOrNull() } ?: return
+        val action = parameters[ActionKey]?.takeIf { name -> RemoteAction.entries.any { it.name == name } } ?: return
         withContext(Dispatchers.Main) {
-            val running = PlaybackService.instance
-            if (running != null) {
-                running.handle(action)
-                return@withContext
-            }
-            // Service is dead: binding a controller starts it (and restores the last queue).
+            // The player lives in another process; connecting starts it (and restores the queue) if needed.
             val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
-            val controller = MediaController.Builder(context, token).buildAsync().await()
-            PlaybackService.instance?.handle(action)
+            val controller = runCatching { MediaController.Builder(context, token).buildAsync().await() }.getOrNull()
+                ?: return@withContext
+            controller.sendCustomCommand(
+                Remote.command(Remote.ACTION),
+                Bundle().apply { putString(Remote.ARG_ACTION, action) },
+            ).await()
             // Hold the binding until playback has promoted the service to the foreground.
-            delay(4_000)
+            delay(3_000)
             controller.release()
         }
     }

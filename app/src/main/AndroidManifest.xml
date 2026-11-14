@@ -53,6 +53,7 @@
         <service
             android:name=".playback.PlaybackService"
             android:exported="true"
+            android:process=":playback"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaSessionService" />
@@ -67,6 +68,10 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".widget.WidgetUpdateReceiver"
+            android:exported="false" />
 
         <receiver
             android:name=".widget.AriaWidgetReceiver"

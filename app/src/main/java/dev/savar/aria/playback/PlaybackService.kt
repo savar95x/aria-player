@@ -2,28 +2,33 @@ package dev.savar.aria.playback
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Bundle
+import android.os.Process
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.common.MediaMetadata
 import androidx.media3.session.CacheBitmapLoader
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dev.savar.aria.MainActivity
 import dev.savar.aria.container
 import dev.savar.aria.data.Links
+import dev.savar.aria.data.MediaStoreQuery
 import dev.savar.aria.data.SavedQueue
 import dev.savar.aria.data.artistText
-import dev.savar.aria.data.titleText
 import dev.savar.aria.data.songUri
-import dev.savar.aria.widget.WidgetState
+import dev.savar.aria.data.titleText
+import dev.savar.aria.widget.WidgetUpdateReceiver
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -34,6 +39,11 @@ import kotlinx.coroutines.launch
 
 enum class RemoteAction { PlayPause, Next, Previous }
 
+/**
+ * Runs in its own process (":playback", see the manifest). If the system kills the UI process
+ * (e.g. OxygenOS when you clear recents) this one keeps playing. The UI, widget and sleep-timer
+ * controls all reach it through the media session.
+ */
 @OptIn(UnstableApi::class)
 class PlaybackService : MediaSessionService() {
 
@@ -42,9 +52,11 @@ class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
     private val scope = MainScope()
     private var restoreJob: Job? = null
+    private val sleepTimer by lazy { SleepTimer(scope) }
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         player = ExoPlayer.Builder(this)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -54,7 +66,7 @@ class PlaybackService : MediaSessionService() {
                 /* handleAudioFocus = */ true,
             )
             .setHandleAudioBecomingNoisy(true)
-            .setWakeMode(C.WAKE_MODE_LOCAL)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
 
         session = MediaSession.Builder(this, player)
@@ -105,7 +117,11 @@ class PlaybackService : MediaSessionService() {
             }
         })
 
-        instance = this
+        // Sleep-timer state is published to every connected controller as session extras.
+        scope.launch {
+            sleepTimer.state.collect { session?.setSessionExtras(Remote.sleepToExtras(it)) }
+        }
+
         restoreJob = scope.launch { restoreQueue() }
         // Keep the saved position fresh so a crash or kill loses at most a few seconds.
         scope.launch {
@@ -119,6 +135,7 @@ class PlaybackService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        // Keep playing when the app is swiped away; only shut down if nothing is playing.
         if (!player.playWhenReady || player.mediaItemCount == 0) {
             stopSelf()
         }
@@ -127,8 +144,8 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         saveQueue()
         instance = null
-        container.sleepTimer.cancel()
-        WidgetState.update(this, player.currentMediaItem, player.mediaMetadata, isPlaying = false)
+        sleepTimer.cancel()
+        WidgetUpdateReceiver.send(this, player.currentMediaItem, player.mediaMetadata, isPlaying = false)
         session?.release()
         session = null
         player.release()
@@ -136,8 +153,7 @@ class PlaybackService : MediaSessionService() {
         super.onDestroy()
     }
 
-    /** Entry point for the home-screen widget buttons. */
-    fun handle(action: RemoteAction) {
+    private fun handle(action: RemoteAction) {
         scope.launch {
             restoreJob?.join()
             when (action) {
@@ -154,8 +170,20 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
+    /** "Stop player" in settings: save, clear the notification and end this process. */
+    private fun shutdown() {
+        saveQueue()
+        player.pause()
+        player.stop()
+        scope.launch {
+            delay(300) // let the command result reach the caller
+            stopSelf()
+            Process.killProcess(Process.myPid())
+        }
+    }
+
     private fun pushWidget() {
-        WidgetState.update(this, player.currentMediaItem, player.mediaMetadata, player.isPlaying || player.playWhenReady)
+        WidgetUpdateReceiver.send(this, player.currentMediaItem, player.mediaMetadata, player.isPlaying || player.playWhenReady)
     }
 
     private fun saveQueue() {
@@ -187,7 +215,7 @@ class PlaybackService : MediaSessionService() {
 
     private suspend fun loadItems(saved: SavedQueue): MediaSession.MediaItemsWithStartPosition {
         val currentId = saved.ids.getOrNull(saved.index)
-        val songs = container.library.songsByIds(saved.ids)
+        val songs = MediaStoreQuery.songsByIds(this, saved.ids)
         val index = songs.indexOfFirst { it.id == currentId }
         return MediaSession.MediaItemsWithStartPosition(
             songs.map { it.toMediaItem() },
@@ -197,7 +225,38 @@ class PlaybackService : MediaSessionService() {
     }
 
     private inner class SessionCallback : MediaSession.Callback {
-        // Controllers send items without their URI; rebuild it from the MediaStore id.
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): MediaSession.ConnectionResult {
+            val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                .apply { Remote.commands.forEach { add(Remote.command(it)) } }
+                .build()
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(commands)
+                .build()
+        }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            when (customCommand.customAction) {
+                Remote.ACTION -> args.getString(Remote.ARG_ACTION)
+                    ?.let { runCatching { RemoteAction.valueOf(it) }.getOrNull() }
+                    ?.let(::handle)
+                Remote.SLEEP_START -> sleepTimer.start(args.getInt(Remote.ARG_MINUTES, 30), args.getBoolean(Remote.ARG_FINISH_SONG))
+                Remote.SLEEP_EXTEND -> sleepTimer.extend(args.getInt(Remote.ARG_MINUTES, 10))
+                Remote.SLEEP_FINISH_SONG -> sleepTimer.setFinishSong(args.getBoolean(Remote.ARG_FINISH_SONG))
+                Remote.SLEEP_CANCEL -> sleepTimer.cancel()
+                Remote.SHUTDOWN -> shutdown()
+            }
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+
+        // Controllers send items without their URI; rebuild it from the media id.
         override fun onAddMediaItems(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
@@ -224,7 +283,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     companion object {
-        /** Same-process shortcut for the widget and sleep timer. */
+        /** Only meaningful inside the player process (used by the sleep timer). */
         @Volatile
         var instance: PlaybackService? = null
             private set

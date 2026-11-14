@@ -4,10 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.core.graphics.scale
 import androidx.glance.appwidget.updateAll
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
-import dev.savar.aria.data.artistText
-import dev.savar.aria.data.titleText
+import dev.savar.aria.data.MediaStoreQuery
 import dev.savar.aria.container
 import dev.savar.aria.data.EmbeddedArt
 import dev.savar.aria.data.songUri
@@ -33,13 +30,11 @@ object WidgetState {
     private val _data = MutableStateFlow<Data?>(null)
     val data: StateFlow<Data?> = _data.asStateFlow()
 
-    fun update(context: Context, item: MediaItem?, meta: MediaMetadata?, isPlaying: Boolean) {
+    /** Runs in the UI process; the player process reaches it through [WidgetUpdateReceiver]. */
+    suspend fun apply(context: Context, id: Long?, title: String, artist: String, isPlaying: Boolean) {
         val app = context.applicationContext
-        app.container.scope.launch {
-            val id = item?.mediaId?.toLongOrNull()
+        run {
             val current = _data.value
-            val title = meta?.titleText.orEmpty()
-            val artist = meta?.artistText.orEmpty()
             val next = if (current != null && current.songId == id) {
                 current.copy(isPlaying = isPlaying, title = title, artist = artist)
             } else {
@@ -66,7 +61,7 @@ object WidgetState {
         val app = context.applicationContext
         val saved = app.container.queueStore.load()
         val id = saved?.ids?.getOrNull(saved.index)
-        val song = id?.let { app.container.library.songsByIds(listOf(it)).firstOrNull() }
+        val song = id?.let { MediaStoreQuery.songsByIds(app, listOf(it)).firstOrNull() }
         if (_data.value != null) return
         val (art, backdrop) = loadArt(app, song?.id)
         _data.value = Data(
