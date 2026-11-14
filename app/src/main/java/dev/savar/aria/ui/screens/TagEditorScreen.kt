@@ -8,6 +8,15 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -161,10 +170,10 @@ fun TagEditorScreen(songId: Long, container: AppContainer, onBack: () -> Unit) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(112.dp).clip(RoundedCornerShape(18.dp))) {
+                    // Old cover stays underneath until the new one has loaded, so it never blanks.
+                    ArtImage(song.art.copy(sizePx = 320), Modifier.fillMaxSize(), RoundedCornerShape(18.dp))
                     if (newArtThumb != null) {
                         AsyncImage(newArtThumb, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                    } else {
-                        ArtImage(song.art.copy(sizePx = 320), Modifier.fillMaxSize(), RoundedCornerShape(18.dp))
                     }
                 }
                 Spacer(Modifier.width(16.dp))
@@ -212,7 +221,7 @@ fun TagEditorScreen(songId: Long, container: AppContainer, onBack: () -> Unit) {
                 tags = EditableTags(m.title, m.artist, m.album, m.albumArtist, m.year, m.genre, m.track)
                 newArtUrl = m.artworkUrl
                 newArtThumb = m.thumbnailUrl
-                showSearch = false
+                showSearch = false // the sheet has already slid away
             },
         )
     }
@@ -239,6 +248,12 @@ private fun TagField(
     )
 }
 
+/**
+ * Online match picker. Fixed height and fully expanded from the start, so the sheet never jumps
+ * when results arrive; previous results stay put (dimmed) while a new search runs; picking a
+ * result slides the sheet away before the editor updates.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun MatchSheet(initialQuery: String, onDismiss: () -> Unit, onPick: (TrackMatch) -> Unit) {
     var query by remember { mutableStateOf(initialQuery) }
@@ -246,22 +261,35 @@ private fun MatchSheet(initialQuery: String, onDismiss: () -> Unit, onPick: (Tra
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val keyboard = LocalSoftwareKeyboardController.current
+    val listState = rememberLazyListState()
 
     fun search() {
         if (query.isBlank()) return
+        keyboard?.hide()
         loading = true
         error = null
         scope.launch {
             runCatching { MetadataSearch.search(query) }
-                .onSuccess { results = it }
+                .onSuccess { results = it; listState.scrollToItem(0) }
                 .onFailure { error = "Search failed. Check your connection." }
             loading = false
         }
     }
     LaunchedEffect(Unit) { search() }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    fun pick(m: TrackMatch) {
+        keyboard?.hide()
+        scope.launch { sheetState.hide() }.invokeOnCompletion { onPick(m) }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(Modifier.fillMaxWidth().fillMaxHeight(0.85f).imePadding()) {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
@@ -270,49 +298,65 @@ private fun MatchSheet(initialQuery: String, onDismiss: () -> Unit, onPick: (Tra
                 trailingIcon = { IconButton(onClick = ::search) { Icon(Icons.Rounded.Search, "Search") } },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { search() }),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             )
             Spacer(Modifier.height(8.dp))
-            when {
-                loading -> Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                error != null -> Text(error!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
-                results?.isEmpty() == true -> Text("No matches. Try fewer words.", modifier = Modifier.padding(16.dp))
-            }
-        }
-        if (!loading && !results.isNullOrEmpty()) {
-            LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
-                items(results!!) { m ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable { onPick(m) }.padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+            Box(Modifier.fillMaxWidth().weight(1f)) {
+                val list = results
+                when {
+                    error != null && list.isNullOrEmpty() -> Text(
+                        error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.TopCenter).padding(24.dp),
+                    )
+                    list != null && list.isEmpty() && !loading -> Text(
+                        "No matches. Try fewer words.",
+                        modifier = Modifier.align(Alignment.TopCenter).padding(24.dp),
+                    )
+                    !list.isNullOrEmpty() -> LazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                        modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (loading) 0.4f else 1f },
                     ) {
-                        AsyncImage(
-                            m.thumbnailUrl,
-                            null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)),
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(m.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(
-                                m.artist,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                listOf(m.album, m.year).filter { it.isNotBlank() }.joinToString(" · "),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                        itemsIndexed(list, key = { i, m -> "$i|${m.title}|${m.album}" }) { _, m ->
+                            MatchRow(m, enabled = !loading) { pick(m) }
                         }
                     }
                 }
+                if (loading) LoadingIndicator(Modifier.align(Alignment.Center))
             }
+        }
+    }
+}
+
+@Composable
+private fun MatchRow(m: TrackMatch, enabled: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        ) {
+            AsyncImage(m.thumbnailUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(m.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                m.artist,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                listOf(m.album, m.year).filter { it.isNotBlank() }.joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
