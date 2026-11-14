@@ -22,7 +22,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.using
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
@@ -60,10 +59,11 @@ object Motion {
             fadeOut(tween(90))
 
     /** Track change: new title rises in, old one rises out. */
-    fun trackChange(): ContentTransform =
-        (slideInVertically(tween(320, easing = EmphasizedDecelerate)) { it / 2 } + fadeIn(tween(220))) togetherWith
-            (slideOutVertically(tween(200, easing = EmphasizedAccelerate)) { -it / 2 } + fadeOut(tween(120))) using
-            SizeTransform(clip = false)
+    fun trackChange(): ContentTransform = ContentTransform(
+        targetContentEnter = slideInVertically(tween(320, easing = EmphasizedDecelerate)) { it / 2 } + fadeIn(tween(220)),
+        initialContentExit = slideOutVertically(tween(200, easing = EmphasizedAccelerate)) { -it / 2 } + fadeOut(tween(120)),
+        sizeTransform = SizeTransform(clip = false),
+    )
 }
 
 val LocalSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { null }
