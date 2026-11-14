@@ -61,7 +61,7 @@ class SettingsStore(context: Context, private val scope: CoroutineScope) {
     )
 
     private fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
-        scope.launch { store.edit(block) }
+        scope.launch { store.edit { block(it) } }
     }
 
     fun setTheme(mode: ThemeMode) = edit { it[Keys.theme] = mode.name }

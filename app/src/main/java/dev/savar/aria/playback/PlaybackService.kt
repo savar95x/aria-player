@@ -158,10 +158,10 @@ class PlaybackService : MediaSessionService() {
         if (player.mediaItemCount > 0) return
         val saved = container.queueStore.load() ?: return
         val items = loadItems(saved)
-        if (items.isEmpty() || player.mediaItemCount > 0) return
+        if (items.mediaItems.isEmpty() || player.mediaItemCount > 0) return
         player.shuffleModeEnabled = saved.shuffle
         player.repeatMode = saved.repeatMode
-        player.setMediaItems(items.items, items.startIndex, items.startPositionMs)
+        player.setMediaItems(items.mediaItems, items.startIndex, items.startPositionMs)
         player.prepare()
     }
 
