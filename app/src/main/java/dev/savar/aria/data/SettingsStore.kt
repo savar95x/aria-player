@@ -25,6 +25,8 @@ data class AppSettings(
     val font: String? = null,
     val songSort: SongSort = SongSort.Title,
     val folders: FolderFilter = FolderFilter(),
+    /** [Album.pinKey]s, shown first in the Albums tab. */
+    val pinnedAlbums: Set<String> = emptySet(),
 )
 
 private val Context.dataStore by preferencesDataStore("settings")
@@ -40,6 +42,7 @@ class SettingsStore(context: Context, private val scope: CoroutineScope) {
         val sort = stringPreferencesKey("song_sort")
         val include = stringSetPreferencesKey("folders_include")
         val exclude = stringSetPreferencesKey("folders_exclude")
+        val pinned = stringSetPreferencesKey("pinned_albums")
     }
 
     /** Null until the first read finishes, so the UI can avoid a theme flash. */
@@ -58,6 +61,7 @@ class SettingsStore(context: Context, private val scope: CoroutineScope) {
         font = this[Keys.font]?.takeIf { it.isNotBlank() },
         songSort = this[Keys.sort]?.let { runCatching { SongSort.valueOf(it) }.getOrNull() } ?: SongSort.Title,
         folders = FolderFilter(this[Keys.include].orEmpty(), this[Keys.exclude].orEmpty()),
+        pinnedAlbums = this[Keys.pinned].orEmpty(),
     )
 
     private fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
@@ -75,6 +79,11 @@ class SettingsStore(context: Context, private val scope: CoroutineScope) {
         val exclude = it[Keys.exclude].orEmpty() - path
         it[Keys.include] = if (rule == FolderRule.Include) include + path else include
         it[Keys.exclude] = if (rule == FolderRule.Exclude) exclude + path else exclude
+    }
+
+    fun togglePinned(album: Album) = edit {
+        val pinned = it[Keys.pinned].orEmpty()
+        it[Keys.pinned] = if (album.pinKey in pinned) pinned - album.pinKey else pinned + album.pinKey
     }
 
     fun clearFolderRules() = edit {

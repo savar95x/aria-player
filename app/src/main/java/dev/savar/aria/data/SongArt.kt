@@ -1,23 +1,28 @@
 package dev.savar.aria.data
 
-import android.util.Size
 import coil3.ImageLoader
-import coil3.asImage
 import coil3.decode.DataSource
+import coil3.decode.ImageSource
 import coil3.fetch.FetchResult
 import coil3.fetch.Fetcher
-import coil3.fetch.ImageFetchResult
+import coil3.fetch.SourceFetchResult
 import coil3.key.Keyer
 import coil3.request.Options
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okio.Buffer
+import java.io.FileNotFoundException
 
-/** Loads per-song artwork through MediaStore (embedded art, cached by the system). */
+/** Loads a song's embedded cover; Coil handles downsampling and memory caching. */
 class SongArtFetcher(private val data: SongArt, private val options: Options) : Fetcher {
     override suspend fun fetch(): FetchResult = withContext(Dispatchers.IO) {
-        val bitmap = options.context.contentResolver
-            .loadThumbnail(data.uri, Size(data.sizePx, data.sizePx), null)
-        ImageFetchResult(image = bitmap.asImage(), isSampled = true, dataSource = DataSource.DISK)
+        val bytes = EmbeddedArt.bytes(options.context, data.uri)
+            ?: throw FileNotFoundException("No embedded art in ${data.uri}")
+        SourceFetchResult(
+            source = ImageSource(Buffer().write(bytes), options.fileSystem),
+            mimeType = null,
+            dataSource = DataSource.DISK,
+        )
     }
 
     class Factory : Fetcher.Factory<SongArt> {

@@ -56,6 +56,9 @@ data class Album(
     val songs: List<Song>,
 ) {
     val art: SongArt get() = songs.first().art
+
+    /** Stable across rescans (MediaStore album ids can change), so pins survive. */
+    val pinKey: String get() = "$title\u0000$artist"
 }
 
 @Immutable

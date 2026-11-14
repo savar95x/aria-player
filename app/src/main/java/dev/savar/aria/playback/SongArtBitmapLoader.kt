@@ -4,12 +4,12 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.MediaStore
-import android.util.Size
 import androidx.annotation.OptIn
 import androidx.media3.common.util.BitmapLoader
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSourceBitmapLoader
 import com.google.common.util.concurrent.ListenableFuture
+import dev.savar.aria.data.EmbeddedArt
 import com.google.common.util.concurrent.MoreExecutors
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -26,7 +26,7 @@ class SongArtBitmapLoader(private val context: Context) : BitmapLoader {
 
     override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
         if (uri.authority == MediaStore.AUTHORITY && uri.path.orEmpty().contains("/audio/media/")) {
-            executor.submit(Callable { context.contentResolver.loadThumbnail(uri, Size(720, 720), null) })
+            executor.submit(Callable { EmbeddedArt.bitmap(context, uri, 720) ?: error("No embedded art") })
         } else {
             fallback.loadBitmap(uri)
         }

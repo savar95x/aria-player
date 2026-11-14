@@ -2,7 +2,19 @@
 
 package dev.savar.aria.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import dev.savar.aria.ui.components.GridFastScroller
+import dev.savar.aria.ui.components.ListFastScroller
+import dev.savar.aria.ui.components.scrollInitial
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -146,7 +159,13 @@ fun HomeScreen(
                 else -> AnimatedContent(targetState = tab, transitionSpec = { Motion.fadeThrough() }, label = "homeTab") { t ->
                     when (t) {
                         HomeTab.Songs -> SongsTab(songsList, sorted, sort, player, vm, actions, onSort = container.settings::setSongSort)
-                        HomeTab.Albums -> AlbumsTab(albumsGrid, albums, onAlbum)
+                        HomeTab.Albums -> AlbumsTab(
+                            albumsGrid,
+                            albums,
+                            settings?.pinnedAlbums.orEmpty(),
+                            onAlbum,
+                            container.settings::togglePinned,
+                        )
                         HomeTab.Artists -> ArtistsTab(artistsList, artists, onArtist)
                     }
                 }
@@ -185,6 +204,17 @@ private fun SongsTab(
     actions: SongActions,
     onSort: (SongSort) -> Unit,
 ) {
+    val label: (Int) -> String? = { i ->
+        songs.getOrNull(i - 1)?.let { s ->
+            when (sort) {
+                SongSort.Title -> s.title.scrollInitial()
+                SongSort.Artist -> s.artist.scrollInitial()
+                SongSort.Album -> s.album.scrollInitial()
+                SongSort.DateAdded -> null
+            }
+        }
+    }
+    Box(Modifier.fillMaxSize()) {
     LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = listBottomPadding()) {
         item(key = "header") {
             Row(
@@ -217,7 +247,15 @@ private fun SongsTab(
         }
         item { NavBarSpacer() }
     }
+    ListFastScroller(state, label, scrollerModifier())
+    }
 }
+
+@Composable
+private fun BoxScope.scrollerModifier(): Modifier = Modifier
+    .align(Alignment.TopEnd)
+    .padding(top = 4.dp, bottom = LocalBottomPadding.current)
+    .navigationBarsPadding()
 
 @Composable
 private fun SortMenu(sort: SongSort, onSort: (SongSort) -> Unit) {
@@ -236,8 +274,31 @@ private fun SortMenu(sort: SongSort, onSort: (SongSort) -> Unit) {
     }
 }
 
+private sealed interface GridEntry {
+    data class Header(val title: String) : GridEntry
+    data class Item(val album: Album, val pinned: Boolean) : GridEntry
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun AlbumsTab(state: LazyGridState, albums: List<Album>, onAlbum: (Long) -> Unit) {
+private fun AlbumsTab(
+    state: LazyGridState,
+    albums: List<Album>,
+    pinnedKeys: Set<String>,
+    onAlbum: (Long) -> Unit,
+    onTogglePin: (Album) -> Unit,
+) {
+    val entries = remember(albums, pinnedKeys) {
+        val (pinned, rest) = albums.partition { it.pinKey in pinnedKeys }
+        if (pinned.isEmpty()) {
+            rest.map { GridEntry.Item(it, false) }
+        } else {
+            listOf(GridEntry.Header("Pinned")) + pinned.map { GridEntry.Item(it, true) } +
+                listOf(GridEntry.Header("All albums")) + rest.map { GridEntry.Item(it, false) }
+        }
+    }
+    val haptics = LocalHapticFeedback.current
+    Box(Modifier.fillMaxSize()) {
     LazyVerticalGrid(
         state = state,
         columns = GridCells.Adaptive(150.dp),
@@ -246,33 +307,81 @@ private fun AlbumsTab(state: LazyGridState, albums: List<Album>, onAlbum: (Long)
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        items(albums, key = { it.id }) { album ->
-            Column(Modifier.animateItem().clickable { onAlbum(album.id) }) {
-                ArtImage(
-                    album.art.copy(sizePx = 400),
-                    Modifier.sharedArt("album-${album.id}").fillMaxWidth().aspectRatio(1f),
-                    RoundedCornerShape(18.dp),
+        items(
+            entries,
+            key = { e -> if (e is GridEntry.Item) e.album.id else "h_" + (e as GridEntry.Header).title },
+            span = { e -> if (e is GridEntry.Header) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
+        ) { e ->
+            when (e) {
+                is GridEntry.Header -> Text(
+                    e.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.animateItem().padding(top = 4.dp),
                 )
-                Spacer(Modifier.height(8.dp))
-                Text(album.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    album.artist,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                is GridEntry.Item -> Column(
+                    Modifier
+                        .animateItem()
+                        .clip(RoundedCornerShape(18.dp))
+                        .combinedClickable(
+                            onClick = { onAlbum(e.album.id) },
+                            onLongClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onTogglePin(e.album)
+                            },
+                        ),
+                ) {
+                    Box {
+                        ArtImage(
+                            e.album.art.copy(sizePx = 400),
+                            Modifier.sharedArt("album-${e.album.id}").fillMaxWidth().aspectRatio(1f),
+                            RoundedCornerShape(18.dp),
+                        )
+                        if (e.pinned) {
+                            Icon(
+                                Icons.Rounded.PushPin,
+                                "Pinned",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                    .padding(5.dp),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(e.album.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        e.album.artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
         item(span = { GridItemSpan(maxLineSpan) }) { NavBarSpacer() }
+    }
+    GridFastScroller(
+        state,
+        label = { i -> (entries.getOrNull(i) as? GridEntry.Item)?.album?.title?.scrollInitial() },
+        modifier = scrollerModifier(),
+    )
     }
 }
 
 @Composable
 private fun ArtistsTab(state: LazyListState, artists: List<Artist>, onArtist: (String) -> Unit) {
-    LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = listBottomPadding()) {
-        items(artists, key = { it.name }) { artist -> ArtistRow(artist) { onArtist(artist.name) } }
-        item { NavBarSpacer() }
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = listBottomPadding()) {
+            items(artists, key = { it.name }) { artist -> ArtistRow(artist) { onArtist(artist.name) } }
+            item { NavBarSpacer() }
+        }
+        ListFastScroller(state, { i -> artists.getOrNull(i)?.name?.scrollInitial() }, scrollerModifier())
     }
 }
 
@@ -296,10 +405,11 @@ private fun ArtistRow(artist: Artist, onClick: () -> Unit) {
 }
 
 @Composable
-private fun BackTopBar(title: String = "", onBack: () -> Unit) {
+private fun BackTopBar(title: String = "", onBack: () -> Unit, actions: @Composable () -> Unit = {}) {
     TopAppBar(
         title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") } },
+        actions = { actions() },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
     )
 }
@@ -331,8 +441,25 @@ fun AlbumScreen(
     onArtist: (String) -> Unit,
 ) {
     val albums by container.library.albums.collectAsStateWithLifecycle()
+    val settings by container.settings.settings.collectAsStateWithLifecycle()
     val album = albums.firstOrNull { it.id == albumId }
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = { BackTopBar(onBack = onBack) }) { padding ->
+    val pinned = album != null && album.pinKey in settings?.pinnedAlbums.orEmpty()
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            BackTopBar(onBack = onBack) {
+                if (album != null) {
+                    IconButton(onClick = { container.settings.togglePinned(album) }) {
+                        Icon(
+                            if (pinned) Icons.Rounded.PushPin else Icons.Outlined.PushPin,
+                            if (pinned) "Unpin album" else "Pin album",
+                            tint = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        },
+    ) { padding ->
         if (album == null) return@Scaffold
         LazyColumn(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize(), contentPadding = listBottomPadding()) {
             item(key = "header") {

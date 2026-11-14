@@ -71,6 +71,7 @@ import dev.savar.aria.metadata.EditableTags
 import dev.savar.aria.metadata.MetadataSearch
 import dev.savar.aria.metadata.TagWriter
 import dev.savar.aria.metadata.TrackMatch
+import dev.savar.aria.ui.LocalBottomPadding
 import dev.savar.aria.ui.components.ArtImage
 import kotlinx.coroutines.launch
 
@@ -199,7 +200,7 @@ fun TagEditorScreen(songId: Long, container: AppContainer, onBack: () -> Unit) {
                 TagField("Track", tags.track, Modifier.weight(1f), numeric = true) { tags = tags.copy(track = it) }
             }
             TagField("Genre", tags.genre) { tags = tags.copy(genre = it) }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(LocalBottomPadding.current + 16.dp))
         }
     }
 

@@ -2,11 +2,11 @@ package dev.savar.aria.widget
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.util.Size
 import androidx.core.graphics.scale
 import androidx.glance.appwidget.updateAll
 import androidx.media3.common.MediaItem
 import dev.savar.aria.container
+import dev.savar.aria.data.EmbeddedArt
 import dev.savar.aria.data.songUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,9 +76,7 @@ object WidgetState {
     private suspend fun loadArt(context: Context, id: Long?): Pair<Bitmap?, Bitmap?> =
         withContext(Dispatchers.IO) {
             if (id == null) return@withContext null to null
-            val art = runCatching {
-                context.contentResolver.loadThumbnail(songUri(id), Size(480, 480), null)
-            }.getOrNull() ?: return@withContext null to null
+            val art = EmbeddedArt.bitmap(context, songUri(id), 480) ?: return@withContext null to null
             art to blur(art)
         }
 

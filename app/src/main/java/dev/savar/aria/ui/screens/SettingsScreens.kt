@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -72,6 +73,7 @@ import dev.savar.aria.BuildConfig
 import dev.savar.aria.data.FolderRule
 import dev.savar.aria.data.ThemeMode
 import dev.savar.aria.data.buildFolderTree
+import dev.savar.aria.ui.LocalBottomPadding
 import dev.savar.aria.ui.theme.FeaturedFonts
 import dev.savar.aria.ui.theme.googleFontFamily
 
@@ -186,7 +188,8 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/savar95x/aria-player")))
                 },
             )
-            Spacer(Modifier.height(24.dp))
+            // Clear the mini player docked at the bottom.
+            Spacer(Modifier.height(LocalBottomPadding.current + 16.dp))
         }
     }
 
@@ -224,6 +227,25 @@ private fun BackgroundPlaybackRow() {
                 Intent(
                     android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                     Uri.parse("package:${context.packageName}"),
+                ),
+            )
+        },
+    )
+    ListItem(
+        headlineContent = { Text("OnePlus / OxygenOS") },
+        supportingContent = {
+            Text(
+                "OxygenOS can still kill apps you swipe away. Open app info → Battery → turn on " +
+                    "\"Allow background activity\" and \"Allow auto launch\". Locking Aria in recents also works.",
+            )
+        },
+        leadingContent = { Icon(Icons.Rounded.Info, null) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable {
+            context.startActivity(
+                Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.fromParts("package", context.packageName, null),
                 ),
             )
         },
@@ -302,7 +324,7 @@ fun FoldersScreen(container: AppContainer, onBack: () -> Unit) {
     ) { padding ->
         LazyColumn(
             Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 32.dp),
+            contentPadding = PaddingValues(bottom = LocalBottomPadding.current + 24.dp),
         ) {
             item {
                 Card(
