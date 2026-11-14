@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
@@ -53,8 +54,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -143,6 +145,7 @@ private fun Library(container: AppContainer) {
     val player by vm.state.collectAsStateWithLifecycle()
     val nav = rememberNavController()
     var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
+    var showLyrics by rememberSaveable { mutableStateOf(false) }
 
     val actions = remember(vm, nav) {
         SongActions(
@@ -260,18 +263,12 @@ private fun Library(container: AppContainer) {
                 exit = slideOutVertically { it },
                 modifier = Modifier.align(Alignment.BottomCenter),
             ) {
-                // A tone above the page plus a soft rim along the top edge that fades out down the
-                // sides: separates the dock from a pure-black list without boxing it in.
-                val rim = MaterialTheme.colorScheme.outlineVariant
+                // One tone above the page; the tonal step alone separates it.
                 Surface(
                     // Swipe up anywhere on the dock (just above the home gesture) to open the player.
                     modifier = if (hasMini) Modifier.verticalSwipe(onSwipeUp = { nowPlayingOpen = true }) else Modifier,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                    border = BorderStroke(
-                        1.dp,
-                        Brush.verticalGradient(0f to rim.copy(alpha = 0.7f), 0.18f to Color.Transparent),
-                    ),
                 ) {
                     Column {
                         AnimatedVisibility(
@@ -332,6 +329,8 @@ private fun Library(container: AppContainer) {
                     onOpenAlbum = { id -> nowPlayingOpen = false; nav.navigate("album/$id") },
                     onOpenArtist = { name -> nowPlayingOpen = false; nav.navigate("artist/${Uri.encode(name)}") },
                     onEditTags = { id -> nowPlayingOpen = false; nav.navigate("tags/$id") },
+                    showLyrics = showLyrics,
+                    onShowLyrics = { showLyrics = it },
                 )
               }
             }
@@ -340,7 +339,7 @@ private fun Library(container: AppContainer) {
       }
     }
     // Predictive back: the sheet shrinks with your finger, and closes if you commit.
-    PredictiveBackHandler(enabled = nowPlayingOpen) { events ->
+    PredictiveBackHandler(enabled = nowPlayingOpen && !showLyrics) { events ->
         try {
             events.collect { backProgress = it.progress }
             nowPlayingOpen = false
@@ -349,6 +348,8 @@ private fun Library(container: AppContainer) {
             throw e
         }
     }
+    // With lyrics open, back first returns to the cover.
+    BackHandler(enabled = nowPlayingOpen && showLyrics) { showLyrics = false }
 }
 
 private fun NavGraphBuilder.screen(
@@ -359,12 +360,14 @@ private fun NavGraphBuilder.screen(
     CompositionLocalProvider(LocalAnimatedScope provides this) { content(entry) }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AriaNavigationBar(selected: HomeTab?, onSelect: (HomeTab) -> Unit) {
-    NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp) {
+    // M3 Expressive "short" navigation bar: shorter, pill indicator, labels always shown.
+    ShortNavigationBar(containerColor = Color.Transparent) {
         HomeTab.entries.forEach { t ->
             val isSelected = t == selected
-            NavigationBarItem(
+            ShortNavigationBarItem(
                 selected = isSelected,
                 onClick = { onSelect(t) },
                 icon = {

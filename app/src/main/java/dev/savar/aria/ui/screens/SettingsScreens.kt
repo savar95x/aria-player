@@ -48,6 +48,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -93,8 +94,31 @@ private fun SectionTitle(text: String) {
         text,
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 4.dp),
+        modifier = Modifier.padding(start = 28.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
     )
+}
+
+/**
+ * Material 3 Expressive / Android 16 style list group: rows share one rounded block, split by
+ * small gaps, with the outer corners rounder than the inner ones.
+ */
+@Composable
+private fun SettingsGroup(vararg rows: @Composable () -> Unit) {
+    Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        rows.forEachIndexed { i, row ->
+            val big = 24.dp
+            val small = 6.dp
+            val shape = when {
+                rows.size == 1 -> RoundedCornerShape(big)
+                i == 0 -> RoundedCornerShape(topStart = big, topEnd = big, bottomStart = small, bottomEnd = small)
+                i == rows.lastIndex -> RoundedCornerShape(topStart = small, topEnd = small, bottomStart = big, bottomEnd = big)
+                else -> RoundedCornerShape(small)
+            }
+            Surface(shape = shape, color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+                row()
+            }
+        }
+    }
 }
 
 @Composable
@@ -129,63 +153,77 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
                 .navigationBarsPadding(),
         ) {
             SectionTitle("Appearance")
-            Text(
-                "Theme",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                ThemeMode.entries.forEachIndexed { i, mode ->
-                    SegmentedButton(
-                        selected = s.themeMode == mode,
-                        onClick = { store.setTheme(mode) },
-                        shape = SegmentedButtonDefaults.itemShape(i, ThemeMode.entries.size),
-                    ) { Text(mode.name) }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            SwitchRow("Pure black", "AMOLED-friendly dark theme", s.amoled, store::setAmoled)
-            SwitchRow("Wallpaper colors", "Material You accents from your wallpaper", s.dynamicColor, store::setDynamicColor)
-            ListItem(
-                headlineContent = { Text("Font") },
-                supportingContent = { Text(s.font ?: "System default") },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.clickable { showFonts = true },
+            SettingsGroup(
+                {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("Theme", style = MaterialTheme.typography.bodyLarge)
+                        Spacer(Modifier.height(10.dp))
+                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                            ThemeMode.entries.forEachIndexed { i, mode ->
+                                SegmentedButton(
+                                    selected = s.themeMode == mode,
+                                    onClick = { store.setTheme(mode) },
+                                    shape = SegmentedButtonDefaults.itemShape(i, ThemeMode.entries.size),
+                                ) { Text(mode.name) }
+                            }
+                        }
+                    }
+                },
+                { SwitchRow("Pure black", "AMOLED-friendly dark theme", s.amoled, store::setAmoled) },
+                { SwitchRow("Wallpaper colors", "Material You accents from your wallpaper", s.dynamicColor, store::setDynamicColor) },
+                {
+                    ListItem(
+                        headlineContent = { Text("Font") },
+                        supportingContent = { Text(s.font ?: "System default") },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier.clickable { showFonts = true },
+                    )
+                },
             )
 
             SectionTitle("Library")
-            ListItem(
-                headlineContent = { Text("Folders") },
-                supportingContent = {
-                    Text(
-                        when {
-                            filter.isEmpty -> "All folders"
-                            else -> "${filter.include.size} included · ${filter.exclude.size} excluded"
+            SettingsGroup(
+                {
+                    ListItem(
+                        headlineContent = { Text("Folders") },
+                        supportingContent = {
+                            Text(
+                                when {
+                                    filter.isEmpty -> "All folders"
+                                    else -> "${filter.include.size} included · ${filter.exclude.size} excluded"
+                                },
+                            )
                         },
+                        leadingContent = { Icon(Icons.Rounded.Folder, null) },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier.clickable(onClick = onFolders),
                     )
                 },
-                leadingContent = { Icon(Icons.Rounded.Folder, null) },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.clickable(onClick = onFolders),
-            )
-            ListItem(
-                headlineContent = { Text("Rescan library") },
-                supportingContent = { Text("Aria picks up new files automatically; use this if something looks stale") },
-                leadingContent = { Icon(Icons.Rounded.Refresh, null) },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.clickable { container.library.refresh() },
+                {
+                    ListItem(
+                        headlineContent = { Text("Rescan library") },
+                        supportingContent = { Text("Aria picks up new files automatically; use this if something looks stale") },
+                        leadingContent = { Icon(Icons.Rounded.Refresh, null) },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier.clickable { container.library.refresh() },
+                    )
+                },
             )
 
             SectionTitle("Playback")
-            BackgroundPlaybackRow()
+            SettingsGroup({ BatteryRow() }, { OxygenOsRow() })
 
             SectionTitle("About")
-            ListItem(
-                headlineContent = { Text("Aria ${BuildConfig.VERSION_NAME}") },
-                supportingContent = { Text("github.com/savar95x/aria-player") },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.clickable {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/savar95x/aria-player")))
+            SettingsGroup(
+                {
+                    ListItem(
+                        headlineContent = { Text("Aria ${BuildConfig.VERSION_NAME}") },
+                        supportingContent = { Text("github.com/savar95x/aria-player") },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier.clickable {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/savar95x/aria-player")))
+                        },
+                    )
                 },
             )
             // Clear the mini player docked at the bottom.
@@ -203,7 +241,7 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
  * OxygenOS can still kill "optimised" apps in the background; unrestricted battery use prevents that.
  */
 @Composable
-private fun BackgroundPlaybackRow() {
+private fun BatteryRow() {
     val context = LocalContext.current
     val power = remember { context.getSystemService(PowerManager::class.java) }
     fun check() = power.isIgnoringBatteryOptimizations(context.packageName)
@@ -231,6 +269,11 @@ private fun BackgroundPlaybackRow() {
             )
         },
     )
+}
+
+@Composable
+private fun OxygenOsRow() {
+    val context = LocalContext.current
     ListItem(
         headlineContent = { Text("OnePlus / OxygenOS") },
         supportingContent = {

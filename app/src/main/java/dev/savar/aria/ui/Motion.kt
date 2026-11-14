@@ -88,9 +88,9 @@ fun Modifier.sharedContainer(key: String): Modifier {
 
 /** Marks artwork that should morph between screens sharing the same [key]. No-op outside a transition. */
 @Composable
-fun Modifier.sharedArt(key: String): Modifier {
+fun Modifier.sharedArt(key: String, scope: AnimatedVisibilityScope? = null): Modifier {
     val shared = LocalSharedTransitionScope.current ?: return this
-    val animated = LocalAnimatedScope.current ?: return this
+    val animated = scope ?: LocalAnimatedScope.current ?: return this
     return with(shared) {
         this@sharedArt.sharedElement(
             state = rememberSharedContentState(key),

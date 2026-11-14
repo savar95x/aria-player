@@ -22,6 +22,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -54,6 +56,7 @@ import dev.savar.aria.data.LyricsState
 import dev.savar.aria.ui.PlayerViewModel
 import kotlinx.coroutines.delay
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LyricsPane(
     state: LyricsState,
@@ -63,7 +66,7 @@ fun LyricsPane(
 ) {
     Box(modifier.fillMaxWidth().fadingEdges()) {
         when (state) {
-            LyricsState.Loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+            LyricsState.Loading -> LoadingIndicator(Modifier.align(Alignment.Center))
             is LyricsState.Found -> when (val lyrics = state.lyrics) {
                 is Lyrics.Synced -> SyncedLyrics(lyrics.lines, vm)
                 is Lyrics.Plain -> Text(

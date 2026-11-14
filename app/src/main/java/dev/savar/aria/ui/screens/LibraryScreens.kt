@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package dev.savar.aria.ui.screens
 
@@ -68,6 +68,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -152,7 +154,7 @@ fun HomeScreen(
     ) { padding ->
         Box(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) {
             when {
-                songs == null -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                songs == null -> LoadingIndicator(Modifier.align(Alignment.Center))
                 songs!!.isEmpty() -> EmptyLibrary(onSettings)
                 // Material "fade through" between top-level destinations.
                 else -> AnimatedContent(targetState = tab, transitionSpec = { Motion.fadeThrough() }, label = "homeTab") { t ->
@@ -420,13 +422,14 @@ private fun BackTopBar(title: String = "", onBack: () -> Unit, actions: @Composa
 
 @Composable
 private fun PlayShuffleRow(onPlay: () -> Unit, onShuffle: () -> Unit) {
+    // Expressive buttons: shape morphs on press.
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Button(onClick = onPlay) {
+        Button(onClick = onPlay, shapes = ButtonDefaults.shapes()) {
             Icon(Icons.Rounded.PlayArrow, null, Modifier.size(20.dp))
             Spacer(Modifier.width(6.dp))
             Text("Play")
         }
-        FilledTonalButton(onClick = onShuffle) {
+        FilledTonalButton(onClick = onShuffle, shapes = ButtonDefaults.shapes()) {
             Icon(Icons.Rounded.Shuffle, null, Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text("Shuffle")

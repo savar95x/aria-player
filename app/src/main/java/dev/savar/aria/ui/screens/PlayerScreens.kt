@@ -122,6 +122,7 @@ import dev.savar.aria.ui.components.formatDuration
 import kotlinx.coroutines.delay
 
 private const val NowPlayingArtKey = "now-playing-art"
+private const val ModeArtKey = "now-playing-art-mode"
 
 private fun AppContainer.artFor(id: Long?): SongArt? =
     id?.let { library.song(it)?.art ?: SongArt(songUri(it), version = 0) }
@@ -238,6 +239,8 @@ fun NowPlayingScreen(
     onOpenAlbum: (Long) -> Unit,
     onOpenArtist: (String) -> Unit,
     onEditTags: (Long) -> Unit,
+    showLyrics: Boolean,
+    onShowLyrics: (Boolean) -> Unit,
 ) {
     val meta = player.meta
     val art = container.artFor(player.currentId)
@@ -249,7 +252,6 @@ fun NowPlayingScreen(
     val now = rememberTicker(sleep.active)
 
     // Lyrics: looked up only while the lyrics view is open, then cached per song.
-    var showLyrics by rememberSaveable { mutableStateOf(false) }
     val song = player.currentId?.let { container.library.song(it) }
     val lyricsRequest = remember(player.current?.mediaId, meta.titleText, song) {
         LyricsRequest(
@@ -292,6 +294,8 @@ fun NowPlayingScreen(
                     textAlign = TextAlign.Center,
                 )
                 NowPlayingMenu(
+                    showLyrics = showLyrics,
+                    onToggleLyrics = { onShowLyrics(!showLyrics) },
                     onAlbum = {
                         val id = player.currentId ?: return@NowPlayingMenu
                         container.library.song(id)?.let { onOpenAlbum(it.albumId) }
@@ -308,10 +312,19 @@ fun NowPlayingScreen(
                 label = "lyricsMode",
             ) { lyricsMode ->
             val artKey = if (lyricsMode == showLyrics) Modifier.sharedArt(NowPlayingArtKey) else Modifier
+            // The cover itself morphs between the big view and the small lyrics header.
+            val modeArt = Modifier.sharedArt(ModeArtKey, scope = this)
             if (lyricsMode) {
                 Column(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        ArtImage(art?.copy(sizePx = 160), artKey.size(52.dp), RoundedCornerShape(12.dp))
+                        Box(modeArt.size(52.dp)) {
+                            ArtImage(
+                                art?.copy(sizePx = 1024),
+                                artKey.fillMaxSize(),
+                                RoundedCornerShape(12.dp),
+                                placeholder = art?.copy(sizePx = 160),
+                            )
+                        }
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
                             Text(
@@ -345,12 +358,14 @@ fun NowPlayingScreen(
             } else {
             Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.weight(0.6f))
-            ArtImage(
-                art?.copy(sizePx = 1024),
-                artKey.fillMaxWidth().aspectRatio(1f),
-                RoundedCornerShape(28.dp),
-                placeholder = art?.copy(sizePx = 160),
-            )
+            Box(modeArt.fillMaxWidth().aspectRatio(1f)) {
+                ArtImage(
+                    art?.copy(sizePx = 1024),
+                    artKey.fillMaxSize(),
+                    RoundedCornerShape(28.dp),
+                    placeholder = art?.copy(sizePx = 160),
+                )
+            }
             Spacer(Modifier.weight(0.5f))
 
             // Titles
@@ -386,29 +401,17 @@ fun NowPlayingScreen(
             Controls(player, vm)
             Spacer(Modifier.height(20.dp))
 
-            // Bottom actions: quiet icons lined up under shuffle / play / repeat.
-            Row(
-                Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val idle = MaterialTheme.colorScheme.onSurfaceVariant
-                val on = MaterialTheme.colorScheme.primary
-                Row(
-                    Modifier.clip(CircleShape).clickable { showSleep = true }.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Outlined.Bedtime, "Sleep timer", Modifier.size(22.dp), tint = if (sleep.active) on else idle)
-                    if (sleep.active) {
-                        Spacer(Modifier.width(6.dp))
-                        Text(sleepLabel(sleep, now), style = MaterialTheme.typography.labelMedium, color = on)
-                    }
+            // Bottom actions
+            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = { showSleep = true }) {
+                    Icon(Icons.Outlined.Bedtime, null, Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (sleep.active) sleepLabel(sleep, now) else "Sleep")
                 }
-                IconButton(onClick = { showLyrics = !showLyrics }) {
-                    Icon(Icons.Outlined.Lyrics, "Lyrics", Modifier.size(22.dp), tint = if (showLyrics) on else idle)
-                }
-                IconButton(onClick = { showQueue = true }) {
-                    Icon(Icons.AutoMirrored.Outlined.QueueMusic, "Queue", Modifier.size(22.dp), tint = idle)
+                TextButton(onClick = { showQueue = true }) {
+                    Icon(Icons.AutoMirrored.Outlined.QueueMusic, null, Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Queue")
                 }
             }
         }
@@ -419,11 +422,22 @@ fun NowPlayingScreen(
 }
 
 @Composable
-private fun NowPlayingMenu(onAlbum: () -> Unit, onArtist: () -> Unit, onEditTags: () -> Unit) {
+private fun NowPlayingMenu(
+    showLyrics: Boolean,
+    onToggleLyrics: () -> Unit,
+    onAlbum: () -> Unit,
+    onArtist: () -> Unit,
+    onEditTags: () -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) { Icon(Icons.Rounded.MoreVert, "More") }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(if (showLyrics) "Hide lyrics" else "Lyrics") },
+                leadingIcon = { Icon(Icons.Outlined.Lyrics, null) },
+                onClick = { open = false; onToggleLyrics() },
+            )
             DropdownMenuItem(text = { Text("Go to album") }, onClick = { open = false; onAlbum() })
             DropdownMenuItem(text = { Text("Go to artist") }, onClick = { open = false; onArtist() })
             DropdownMenuItem(text = { Text("Edit tags") }, onClick = { open = false; onEditTags() })

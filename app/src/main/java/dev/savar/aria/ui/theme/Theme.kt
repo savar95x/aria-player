@@ -3,7 +3,9 @@ package dev.savar.aria.ui.theme
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -55,6 +57,7 @@ private fun ColorScheme.amoled(): ColorScheme = copy(
     surfaceVariant = lerp(Color.Black, surfaceVariant, 0.7f),
 )
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AriaTheme(settings: AppSettings, content: @Composable () -> Unit) {
     val dark = when (settings.themeMode) {
@@ -83,5 +86,11 @@ fun AriaTheme(settings: AppSettings, content: @Composable () -> Unit) {
         }
     }
 
-    MaterialTheme(colorScheme = scheme, typography = typography, content = content)
+    // Material 3 Expressive: spring-based component motion everywhere.
+    MaterialExpressiveTheme(
+        colorScheme = scheme,
+        motionScheme = MotionScheme.expressive(),
+        typography = typography,
+        content = content,
+    )
 }
