@@ -26,8 +26,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -49,9 +53,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -62,7 +64,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -89,7 +90,8 @@ import dev.savar.aria.ui.components.ArtImage
 import dev.savar.aria.ui.components.SongActions
 import dev.savar.aria.ui.components.SongRow
 import dev.savar.aria.ui.components.formatDuration
-import kotlinx.coroutines.launch
+
+enum class HomeTab(val label: String) { Songs("Songs"), Albums("Albums"), Artists("Artists") }
 
 @Composable
 private fun listBottomPadding(): PaddingValues = PaddingValues(bottom = LocalBottomPadding.current)
@@ -107,6 +109,7 @@ fun HomeScreen(
     onSettings: () -> Unit,
     onAlbum: (Long) -> Unit,
     onArtist: (String) -> Unit,
+    tab: HomeTab,
 ) {
     val songs by container.library.songs.collectAsStateWithLifecycle()
     val albums by container.library.albums.collectAsStateWithLifecycle()
@@ -115,44 +118,35 @@ fun HomeScreen(
     val sort = settings?.songSort ?: SongSort.Title
     val sorted = remember(songs, sort) { songs.orEmpty().sortSongs(sort) }
 
-    val tabs = listOf("Songs", "Albums", "Artists")
-    val pager = rememberPagerState { tabs.size }
-    val scope = rememberCoroutineScope()
+    // Hoisted so each tab keeps its scroll position when you switch away and back.
+    val songsList = rememberLazyListState()
+    val albumsGrid = rememberLazyGridState()
+    val artistsList = rememberLazyListState()
     val bg = MaterialTheme.colorScheme.background
 
     Scaffold(
         containerColor = bg,
         topBar = {
-            Column {
-                TopAppBar(
-                    title = { Text("Aria", fontWeight = FontWeight.SemiBold) },
-                    actions = {
-                        IconButton(onClick = onSearch) { Icon(Icons.Rounded.Search, "Search") }
-                        IconButton(onClick = onSettings) { Icon(Icons.Rounded.Settings, "Settings") }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = bg),
-                )
-                PrimaryTabRow(selectedTabIndex = pager.currentPage, containerColor = bg, divider = {}) {
-                    tabs.forEachIndexed { i, title ->
-                        Tab(
-                            selected = pager.currentPage == i,
-                            onClick = { scope.launch { pager.animateScrollToPage(i) } },
-                            text = { Text(title) },
-                        )
-                    }
-                }
-            }
+            TopAppBar(
+                title = { Text(tab.label, fontWeight = FontWeight.SemiBold) },
+                actions = {
+                    IconButton(onClick = onSearch) { Icon(Icons.Rounded.Search, "Search") }
+                    IconButton(onClick = onSettings) { Icon(Icons.Rounded.Settings, "Settings") }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = bg),
+            )
         },
     ) { padding ->
         Box(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) {
             when {
                 songs == null -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 songs!!.isEmpty() -> EmptyLibrary(onSettings)
-                else -> HorizontalPager(state = pager, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
-                    when (page) {
-                        0 -> SongsTab(sorted, sort, player, vm, actions, onSort = container.settings::setSongSort)
-                        1 -> AlbumsTab(albums, onAlbum)
-                        else -> ArtistsTab(artists, onArtist)
+                // Material "fade through" between top-level destinations.
+                else -> Crossfade(targetState = tab, animationSpec = tween(220), label = "homeTab") { t ->
+                    when (t) {
+                        HomeTab.Songs -> SongsTab(songsList, sorted, sort, player, vm, actions, onSort = container.settings::setSongSort)
+                        HomeTab.Albums -> AlbumsTab(albumsGrid, albums, onAlbum)
+                        HomeTab.Artists -> ArtistsTab(artistsList, artists, onArtist)
                     }
                 }
             }
@@ -182,6 +176,7 @@ private fun EmptyLibrary(onSettings: () -> Unit) {
 
 @Composable
 private fun SongsTab(
+    state: LazyListState,
     songs: List<Song>,
     sort: SongSort,
     player: PlayerUiState,
@@ -189,7 +184,7 @@ private fun SongsTab(
     actions: SongActions,
     onSort: (SongSort) -> Unit,
 ) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = listBottomPadding()) {
+    LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = listBottomPadding()) {
         item(key = "header") {
             Row(
                 Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
@@ -240,8 +235,9 @@ private fun SortMenu(sort: SongSort, onSort: (SongSort) -> Unit) {
 }
 
 @Composable
-private fun AlbumsTab(albums: List<Album>, onAlbum: (Long) -> Unit) {
+private fun AlbumsTab(state: LazyGridState, albums: List<Album>, onAlbum: (Long) -> Unit) {
     LazyVerticalGrid(
+        state = state,
         columns = GridCells.Adaptive(150.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = LocalBottomPadding.current),
@@ -271,8 +267,8 @@ private fun AlbumsTab(albums: List<Album>, onAlbum: (Long) -> Unit) {
 }
 
 @Composable
-private fun ArtistsTab(artists: List<Artist>, onArtist: (String) -> Unit) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = listBottomPadding()) {
+private fun ArtistsTab(state: LazyListState, artists: List<Artist>, onArtist: (String) -> Unit) {
+    LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = listBottomPadding()) {
         items(artists, key = { it.name }) { artist -> ArtistRow(artist) { onArtist(artist.name) } }
         item { NavBarSpacer() }
     }

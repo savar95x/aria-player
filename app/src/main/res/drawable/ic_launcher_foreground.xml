@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Five rounded bars forming a soft waveform, centred in the 72dp safe zone. -->
+<!-- Five rounded bars, symmetric about the centre (54,54) of the 108dp adaptive canvas,
+     all inside the 66dp safe circle so no launcher mask clips them. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -7,17 +8,17 @@
     android:viewportHeight="108">
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M33,47a4,4 0 0 1 8,0v14a4,4 0 0 1 -8,0z" />
+        android:pathData="M30,49a4,4 0 0 1 8,0v10a4,4 0 0 1 -8,0z" />
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M43,38a4,4 0 0 1 8,0v32a4,4 0 0 1 -8,0z" />
+        android:pathData="M40,41a4,4 0 0 1 8,0v26a4,4 0 0 1 -8,0z" />
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M53,30a4,4 0 0 1 8,0v48a4,4 0 0 1 -8,0z" />
+        android:pathData="M50,33a4,4 0 0 1 8,0v42a4,4 0 0 1 -8,0z" />
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M63,41a4,4 0 0 1 8,0v26a4,4 0 0 1 -8,0z" />
+        android:pathData="M60,41a4,4 0 0 1 8,0v26a4,4 0 0 1 -8,0z" />
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M73,49a4,4 0 0 1 8,0v10a4,4 0 0 1 -8,0z" />
+        android:pathData="M70,49a4,4 0 0 1 8,0v10a4,4 0 0 1 -8,0z" />
 </vector>

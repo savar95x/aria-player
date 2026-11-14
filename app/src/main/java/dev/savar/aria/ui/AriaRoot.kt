@@ -10,7 +10,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -24,10 +26,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Album
+import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,6 +63,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.savar.aria.AppContainer
@@ -61,6 +72,7 @@ import dev.savar.aria.ui.screens.AlbumScreen
 import dev.savar.aria.ui.screens.ArtistScreen
 import dev.savar.aria.ui.screens.FoldersScreen
 import dev.savar.aria.ui.screens.HomeScreen
+import dev.savar.aria.ui.screens.HomeTab
 import dev.savar.aria.ui.screens.MiniPlayer
 import dev.savar.aria.ui.screens.NowPlayingScreen
 import dev.savar.aria.ui.screens.SearchScreen
@@ -121,8 +133,14 @@ private fun Library(container: AppContainer) {
             onEditTags = { nav.navigate("tags/${it.id}") },
         )
     }
+    var tab by rememberSaveable { mutableStateOf(HomeTab.Songs) }
+    val backStack by nav.currentBackStackEntryAsState()
+    val route = backStack?.destination?.route
+    // Like Google's apps: the bar stays on top-level pages and the pages you drill into from them.
+    val showNavBar = route == null || route == "home" || route.startsWith("album/") || route.startsWith("artist/")
+
     val hasMini = player.current != null
-    val bottomPadding: Dp = if (hasMini) 92.dp else 16.dp
+    val bottomPadding: Dp = (if (hasMini) 84.dp else 0.dp) + (if (showNavBar) 80.dp else 0.dp) + 12.dp
 
     CompositionLocalProvider(LocalBottomPadding provides bottomPadding) {
         Box(Modifier.fillMaxSize()) {
@@ -137,6 +155,7 @@ private fun Library(container: AppContainer) {
                         onSettings = { nav.navigate("settings") },
                         onAlbum = { nav.navigate("album/$it") },
                         onArtist = { nav.navigate("artist/${Uri.encode(it)}") },
+                        tab = tab,
                     )
                 }
                 composable("search") {
@@ -186,13 +205,33 @@ private fun Library(container: AppContainer) {
                 }
             }
 
-            AnimatedVisibility(
-                visible = hasMini && !nowPlayingOpen,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut(),
-                modifier = Modifier.align(Alignment.BottomCenter),
-            ) {
-                MiniPlayer(container = container, player = player, vm = vm, onClick = { nowPlayingOpen = true })
+            Column(Modifier.align(Alignment.BottomCenter)) {
+                AnimatedVisibility(
+                    visible = hasMini && !nowPlayingOpen,
+                    enter = slideInVertically { it } + fadeIn(),
+                    exit = slideOutVertically { it } + fadeOut(),
+                ) {
+                    MiniPlayer(
+                        container = container,
+                        player = player,
+                        vm = vm,
+                        onClick = { nowPlayingOpen = true },
+                        padForSystemBar = !showNavBar,
+                    )
+                }
+                AnimatedVisibility(
+                    visible = showNavBar && !nowPlayingOpen,
+                    enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                    exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+                ) {
+                    AriaNavigationBar(
+                        selected = tab.takeIf { route == "home" },
+                        onSelect = { t ->
+                            tab = t
+                            if (route != "home") nav.popBackStack("home", inclusive = false)
+                        },
+                    )
+                }
             }
 
             AnimatedVisibility(
@@ -213,6 +252,30 @@ private fun Library(container: AppContainer) {
         }
     }
     BackHandler(enabled = nowPlayingOpen) { nowPlayingOpen = false }
+}
+
+@Composable
+private fun AriaNavigationBar(selected: HomeTab?, onSelect: (HomeTab) -> Unit) {
+    NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+        HomeTab.entries.forEach { t ->
+            val isSelected = t == selected
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = { onSelect(t) },
+                icon = {
+                    Icon(
+                        when (t) {
+                            HomeTab.Songs -> if (isSelected) Icons.Rounded.MusicNote else Icons.Outlined.MusicNote
+                            HomeTab.Albums -> if (isSelected) Icons.Rounded.Album else Icons.Outlined.Album
+                            HomeTab.Artists -> if (isSelected) Icons.Rounded.Person else Icons.Outlined.Person
+                        },
+                        contentDescription = null,
+                    )
+                },
+                label = { Text(t.label) },
+            )
+        }
+    }
 }
 
 @Composable

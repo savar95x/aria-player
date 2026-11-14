@@ -4,6 +4,7 @@ package dev.savar.aria.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.os.PowerManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Folder
@@ -62,6 +64,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.savar.aria.AppContainer
 import dev.savar.aria.BuildConfig
@@ -170,6 +174,9 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
                 modifier = Modifier.clickable { container.library.refresh() },
             )
 
+            SectionTitle("Playback")
+            BackgroundPlaybackRow()
+
             SectionTitle("About")
             ListItem(
                 headlineContent = { Text("Aria ${BuildConfig.VERSION_NAME}") },
@@ -186,6 +193,41 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
     if (showFonts) {
         FontPicker(current = s.font, onPick = { store.setFont(it); showFonts = false }, onDismiss = { showFonts = false })
     }
+}
+
+/**
+ * Playback already runs in a media foreground service, so clearing recents doesn't stop it.
+ * OxygenOS can still kill "optimised" apps in the background; unrestricted battery use prevents that.
+ */
+@Composable
+private fun BackgroundPlaybackRow() {
+    val context = LocalContext.current
+    val power = remember { context.getSystemService(PowerManager::class.java) }
+    fun check() = power.isIgnoringBatteryOptimizations(context.packageName)
+    var unrestricted by remember { mutableStateOf(check()) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { unrestricted = check() }
+    ListItem(
+        headlineContent = { Text("Keep playing in the background") },
+        supportingContent = {
+            Text(
+                if (unrestricted) "Unrestricted battery use is on. Music keeps playing after you clear recents."
+                else "Tap to allow unrestricted battery use, so OxygenOS doesn't stop music in the background",
+            )
+        },
+        leadingContent = { Icon(Icons.Rounded.BatteryChargingFull, null) },
+        trailingContent = {
+            if (unrestricted) Icon(Icons.Rounded.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable(enabled = !unrestricted) {
+            context.startActivity(
+                Intent(
+                    android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:${context.packageName}"),
+                ),
+            )
+        },
+    )
 }
 
 @Composable

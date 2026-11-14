@@ -112,7 +112,13 @@ private fun rememberTicker(active: Boolean): Long {
 }
 
 @Composable
-fun MiniPlayer(container: AppContainer, player: PlayerUiState, vm: PlayerViewModel, onClick: () -> Unit) {
+fun MiniPlayer(
+    container: AppContainer,
+    player: PlayerUiState,
+    vm: PlayerViewModel,
+    onClick: () -> Unit,
+    padForSystemBar: Boolean,
+) {
     val meta = player.current?.mediaMetadata
     var progress by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(player.currentId, player.playing, player.durationMs) {
@@ -127,7 +133,7 @@ fun MiniPlayer(container: AppContainer, player: PlayerUiState, vm: PlayerViewMod
         shape = RoundedCornerShape(22.dp),
         tonalElevation = 2.dp,
         modifier = Modifier
-            .navigationBarsPadding()
+            .then(if (padForSystemBar) Modifier.navigationBarsPadding() else Modifier)
             .padding(horizontal = 10.dp, vertical = 8.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
