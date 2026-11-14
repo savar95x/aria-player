@@ -5,6 +5,9 @@ import android.graphics.Bitmap
 import androidx.core.graphics.scale
 import androidx.glance.appwidget.updateAll
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import dev.savar.aria.data.artistText
+import dev.savar.aria.data.titleText
 import dev.savar.aria.container
 import dev.savar.aria.data.EmbeddedArt
 import dev.savar.aria.data.songUri
@@ -30,19 +33,21 @@ object WidgetState {
     private val _data = MutableStateFlow<Data?>(null)
     val data: StateFlow<Data?> = _data.asStateFlow()
 
-    fun update(context: Context, item: MediaItem?, isPlaying: Boolean) {
+    fun update(context: Context, item: MediaItem?, meta: MediaMetadata?, isPlaying: Boolean) {
         val app = context.applicationContext
         app.container.scope.launch {
             val id = item?.mediaId?.toLongOrNull()
             val current = _data.value
+            val title = meta?.titleText.orEmpty()
+            val artist = meta?.artistText.orEmpty()
             val next = if (current != null && current.songId == id) {
-                current.copy(isPlaying = isPlaying)
+                current.copy(isPlaying = isPlaying, title = title, artist = artist)
             } else {
                 val (art, backdrop) = loadArt(app, id)
                 Data(
                     songId = id,
-                    title = item?.mediaMetadata?.title?.toString().orEmpty(),
-                    artist = item?.mediaMetadata?.artist?.toString().orEmpty(),
+                    title = title,
+                    artist = artist,
                     isPlaying = isPlaying,
                     art = art,
                     backdrop = backdrop,

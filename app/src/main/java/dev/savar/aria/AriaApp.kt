@@ -15,6 +15,7 @@ import dev.savar.aria.playback.SleepTimer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class AriaApp : Application(), SingletonImageLoader.Factory {
     lateinit var container: AppContainer
@@ -42,6 +43,9 @@ class AppContainer(context: Context) {
     val library = MusicRepository(context, settings, scope)
     val queueStore = QueueStore(context)
     val sleepTimer = SleepTimer(scope)
+
+    /** A link shared/opened into Aria, waiting for the player to pick it up. */
+    val pendingLink = MutableStateFlow<String?>(null)
 }
 
 val Context.container: AppContainer get() = (applicationContext as AriaApp).container

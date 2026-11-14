@@ -69,6 +69,20 @@ object Motion {
 val LocalSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { null }
 val LocalAnimatedScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
+/** A container (e.g. the search bar) that morphs into its counterpart on the next screen. */
+@Composable
+fun Modifier.sharedContainer(key: String): Modifier {
+    val shared = LocalSharedTransitionScope.current ?: return this
+    val animated = LocalAnimatedScope.current ?: return this
+    return with(shared) {
+        this@sharedContainer.sharedBounds(
+            sharedContentState = rememberSharedContentState(key),
+            animatedVisibilityScope = animated,
+            boundsTransform = Motion.ArtBounds,
+        )
+    }
+}
+
 /** Marks artwork that should morph between screens sharing the same [key]. No-op outside a transition. */
 @Composable
 fun Modifier.sharedArt(key: String): Modifier {

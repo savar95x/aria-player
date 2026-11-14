@@ -98,6 +98,8 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import dev.savar.aria.AppContainer
 import dev.savar.aria.data.SongArt
+import dev.savar.aria.data.artistText
+import dev.savar.aria.data.titleText
 import dev.savar.aria.data.songUri
 import dev.savar.aria.playback.SleepTimer
 import dev.savar.aria.ui.PlayerUiState
@@ -129,7 +131,7 @@ fun MiniPlayer(
     artVisible: Boolean,
     onClick: () -> Unit,
 ) {
-    val meta = player.current?.mediaMetadata
+    val meta = player.meta
     var progress by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(player.currentId, player.playing, player.durationMs) {
         while (true) {
@@ -158,7 +160,7 @@ fun MiniPlayer(
                 }
                 Spacer(Modifier.width(12.dp))
                 AnimatedContent(
-                    targetState = meta?.title?.toString().orEmpty() to meta?.artist?.toString().orEmpty(),
+                    targetState = meta.titleText to meta.artistText,
                     transitionSpec = { Motion.trackChange() },
                     modifier = Modifier.weight(1f),
                     label = "miniTitle",
@@ -224,7 +226,7 @@ fun NowPlayingScreen(
     onOpenArtist: (String) -> Unit,
     onEditTags: (Long) -> Unit,
 ) {
-    val meta = player.current?.mediaMetadata
+    val meta = player.meta
     val art = container.artFor(player.currentId)
     val accent = rememberArtColor(art)
     val bg = MaterialTheme.colorScheme.background
@@ -268,7 +270,7 @@ fun NowPlayingScreen(
                         val id = player.currentId ?: return@NowPlayingMenu
                         container.library.song(id)?.let { onOpenAlbum(it.albumId) }
                     },
-                    onArtist = { meta?.artist?.toString()?.let(onOpenArtist) },
+                    onArtist = { meta.artist?.toString()?.let(onOpenArtist) },
                     onEditTags = { player.currentId?.let(onEditTags) },
                 )
             }
@@ -284,7 +286,7 @@ fun NowPlayingScreen(
 
             // Titles
             AnimatedContent(
-                targetState = meta?.title?.toString().orEmpty() to meta?.artist?.toString().orEmpty(),
+                targetState = meta.titleText to meta.artistText,
                 transitionSpec = { Motion.trackChange() },
                 modifier = Modifier.fillMaxWidth(),
                 label = "npTitle",
@@ -425,7 +427,7 @@ private fun Controls(player: PlayerUiState, vm: PlayerViewModel) {
 }
 
 @Composable
-private fun QueueSheet(player: PlayerUiState, vm: PlayerViewModel, onDismiss: () -> Unit) {
+fun QueueSheet(player: PlayerUiState, vm: PlayerViewModel, onDismiss: () -> Unit) {
     val currentPos = player.queue.indexOfFirst { it.index == player.currentIndex }.coerceAtLeast(0)
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = currentPos)
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
@@ -454,14 +456,14 @@ private fun QueueSheet(player: PlayerUiState, vm: PlayerViewModel, onDismiss: ()
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
-                            meta.title?.toString().orEmpty(),
+                            meta.titleText,
                             style = MaterialTheme.typography.bodyLarge,
                             color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            meta.artist?.toString().orEmpty(),
+                            meta.artistText,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,

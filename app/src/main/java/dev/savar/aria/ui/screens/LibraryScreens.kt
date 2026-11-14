@@ -8,6 +8,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.statusBarsPadding
+import dev.savar.aria.data.Links
+import dev.savar.aria.ui.sharedContainer
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -140,16 +146,7 @@ fun HomeScreen(
 
     Scaffold(
         containerColor = bg,
-        topBar = {
-            TopAppBar(
-                title = { Text(tab.label, fontWeight = FontWeight.SemiBold) },
-                actions = {
-                    IconButton(onClick = onSearch) { Icon(Icons.Rounded.Search, "Search") }
-                    IconButton(onClick = onSettings) { Icon(Icons.Rounded.Settings, "Settings") }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = bg),
-            )
-        },
+        topBar = { SearchPill(onSearch = onSearch, onSettings = onSettings) },
     ) { padding ->
         Box(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) {
             when {
@@ -578,6 +575,7 @@ fun SearchScreen(
     LaunchedEffect(Unit) { focus.requestFocus() }
 
     val q = query.trim()
+    val link = remember(q) { Links.find(q) }
     val songHits = remember(q, songs) {
         if (q.isEmpty()) emptyList() else songs.orEmpty().filter {
             it.title.contains(q, true) || it.artist.contains(q, true) || it.album.contains(q, true)
@@ -589,13 +587,12 @@ fun SearchScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") } },
-                title = {
+            PillRow {
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
                     TextField(
                         value = query,
                         onValueChange = { query = it },
-                        placeholder = { Text("Songs, albums, artists") },
+                        placeholder = { Text("Search or paste a link") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         trailingIcon = {
@@ -607,14 +604,15 @@ fun SearchScreen(
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,
                         ),
-                        modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                        modifier = Modifier.weight(1f).focusRequester(focus),
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
+            }
         },
     ) { padding ->
         LazyColumn(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize(), contentPadding = listBottomPadding()) {
+            link?.let { url ->
+                item(key = "link") { LinkRow(url, onPlay = { vm.playUrl(url); onBack() }) }
+            }
             if (artistHits.isNotEmpty()) {
                 item { SectionHeader("Artists") }
                 items(artistHits, key = { "ar_" + it.name }) { ArtistRow(it) { onArtist(it.name) } }
@@ -642,6 +640,78 @@ fun SearchScreen(
                 }
             }
             item { NavBarSpacer() }
+        }
+    }
+}
+
+/** Google-style search bar: one rounded surface, search and settings at matching weight. */
+@Composable
+private fun SearchPill(onSearch: () -> Unit, onSettings: () -> Unit) {
+    PillRow(Modifier.clickable(onClick = onSearch)) {
+        Spacer(Modifier.width(12.dp))
+        Icon(Icons.Rounded.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(14.dp))
+        Text(
+            "Search or paste a link",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onSettings) {
+            Icon(Icons.Outlined.Settings, "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** The pill shape shared by the home search bar and the search screen, so one morphs into the other. */
+@Composable
+private fun PillRow(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
+    Row(
+        Modifier
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .fillMaxWidth()
+            .height(56.dp)
+            .sharedContainer("search-pill")
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .then(modifier)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
+}
+
+@Composable
+private fun LinkRow(url: String, onPlay: () -> Unit) {
+    val youtube = Links.isYouTube(url)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !youtube, onClick = onPlay)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Rounded.Link, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                if (youtube) "YouTube links aren't supported yet" else "Play this link",
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (youtube) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                url,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

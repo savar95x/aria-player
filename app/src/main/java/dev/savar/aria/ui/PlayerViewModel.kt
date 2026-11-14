@@ -6,7 +6,11 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
+import android.widget.Toast
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
+import dev.savar.aria.data.Links
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -27,6 +31,8 @@ data class QueueEntry(val index: Int, val item: MediaItem)
 data class PlayerUiState(
     val connected: Boolean = false,
     val current: MediaItem? = null,
+    /** Merged metadata: our tags plus anything the stream reports (e.g. radio "now playing"). */
+    val meta: MediaMetadata = MediaMetadata.EMPTY,
     val currentIndex: Int = C.INDEX_UNSET,
     val playing: Boolean = false,
     val shuffle: Boolean = false,
@@ -52,6 +58,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 ),
             )
         }
+
+        override fun onPlayerError(error: PlaybackException) {
+            val what = if (Links.isLink(controller?.currentMediaItem?.mediaId.orEmpty())) "this link" else "this song"
+            Toast.makeText(getApplication(), "Couldn't play $what (${error.errorCodeName})", Toast.LENGTH_LONG).show()
+        }
     }
 
     init {
@@ -71,6 +82,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             s.copy(
                 connected = true,
                 current = c.currentMediaItem,
+                meta = c.mediaMetadata,
                 currentIndex = c.currentMediaItemIndex,
                 playing = c.playWhenReady && c.playbackState != Player.STATE_ENDED && c.playbackState != Player.STATE_IDLE,
                 shuffle = c.shuffleModeEnabled,
@@ -101,6 +113,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         c.shuffleModeEnabled = shuffle
         val start = if (shuffle) Random.nextInt(songs.size) else startIndex.coerceIn(songs.indices)
         c.setMediaItems(songs.map { it.toMediaItem() }, start, 0)
+        c.prepare()
+        c.play()
+    }
+
+    fun playUrl(url: String) {
+        val c = controller ?: return
+        c.shuffleModeEnabled = false
+        c.setMediaItem(Links.mediaItem(url))
         c.prepare()
         c.play()
     }

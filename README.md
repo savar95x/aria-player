@@ -2,7 +2,7 @@
 
 A lean, native Android music player for local files. Kotlin, Jetpack Compose, Material 3, Media3.
 
-**Download:** [latest build (APK)](https://github.com/savar95x/aria-player/releases/download/nightly/aria.apk). Every push to `main` builds a new one. Builds share a signing key, so each one installs over the last.
+**Download:** [latest release](https://github.com/savar95x/aria-player/releases/latest) ([direct APK](https://github.com/savar95x/aria-player/releases/latest/download/aria.apk)). Every push to `main` publishes a numbered release with its changes listed. Builds share a signing key, so each one installs over the last.
 
 ## What's in it
 

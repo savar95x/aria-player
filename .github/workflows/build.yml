@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # full history + tags, for release notes
 
       - uses: actions/setup-java@v5
         with:
@@ -52,13 +54,24 @@ jobs:
           name: aria-apk
           path: app/build/outputs/apk/release/*.apk
 
-      - name: Publish nightly release
+      - name: Publish release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          TAG="v0.1.${GITHUB_RUN_NUMBER}"
+          PREV=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+          {
+            echo "Install: download **aria.apk** below. It updates over any earlier build."
+            echo
+            echo "### Changes"
+            if [ -n "$PREV" ]; then
+              git log --no-merges --pretty='- %s' "$PREV..HEAD"
+            else
+              git log --no-merges --pretty='- %s' -n 20
+            fi
+          } > notes.md
           cp app/build/outputs/apk/release/app-release.apk aria.apk
           gh release delete ci-log --yes --cleanup-tag || true
           gh release delete nightly --yes --cleanup-tag || true
-          gh release create nightly aria.apk --prerelease --title "Aria nightly (build ${GITHUB_RUN_NUMBER})" \
-            --notes "Built from ${GITHUB_SHA::7}: $(git log -1 --pretty=%s)" --target "$GITHUB_SHA"
+          gh release create "$TAG" aria.apk --title "Aria $TAG" --notes-file notes.md --target "$GITHUB_SHA" --latest

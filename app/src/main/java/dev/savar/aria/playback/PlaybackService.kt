@@ -9,14 +9,19 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.common.MediaMetadata
 import androidx.media3.session.CacheBitmapLoader
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dev.savar.aria.MainActivity
 import dev.savar.aria.container
+import dev.savar.aria.data.Links
 import dev.savar.aria.data.SavedQueue
+import dev.savar.aria.data.artistText
+import dev.savar.aria.data.titleText
 import dev.savar.aria.data.songUri
 import dev.savar.aria.widget.WidgetState
 import kotlinx.coroutines.Job
@@ -64,6 +69,17 @@ class PlaybackService : MediaSessionService() {
             )
             .build()
 
+        // Streams may only have a fallback display title until their own metadata arrives.
+        setMediaNotificationProvider(
+            object : DefaultMediaNotificationProvider(this) {
+                override fun getNotificationContentTitle(metadata: MediaMetadata): CharSequence? =
+                    metadata.titleText.ifEmpty { null }
+
+                override fun getNotificationContentText(metadata: MediaMetadata): CharSequence? =
+                    metadata.artistText.ifEmpty { null }
+            },
+        )
+
         player.addListener(object : Player.Listener {
             override fun onEvents(player: Player, events: Player.Events) {
                 if (events.containsAny(
@@ -71,6 +87,7 @@ class PlaybackService : MediaSessionService() {
                         Player.EVENT_IS_PLAYING_CHANGED,
                         Player.EVENT_PLAY_WHEN_READY_CHANGED,
                         Player.EVENT_TIMELINE_CHANGED,
+                        Player.EVENT_MEDIA_METADATA_CHANGED,
                     )
                 ) {
                     pushWidget()
@@ -111,7 +128,7 @@ class PlaybackService : MediaSessionService() {
         saveQueue()
         instance = null
         container.sleepTimer.cancel()
-        WidgetState.update(this, player.currentMediaItem, isPlaying = false)
+        WidgetState.update(this, player.currentMediaItem, player.mediaMetadata, isPlaying = false)
         session?.release()
         session = null
         player.release()
@@ -138,15 +155,18 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun pushWidget() {
-        WidgetState.update(this, player.currentMediaItem, player.isPlaying || player.playWhenReady)
+        WidgetState.update(this, player.currentMediaItem, player.mediaMetadata, player.isPlaying || player.playWhenReady)
     }
 
     private fun saveQueue() {
         if (player.mediaItemCount == 0) return
+        // Only local songs are restored; links are one-offs.
         val ids = (0 until player.mediaItemCount).mapNotNull { player.getMediaItemAt(it).mediaId.toLongOrNull() }
+        if (ids.isEmpty()) return
+        val currentId = player.currentMediaItem?.mediaId?.toLongOrNull()
         val queue = SavedQueue(
             ids = ids,
-            index = player.currentMediaItemIndex,
+            index = ids.indexOf(currentId).coerceAtLeast(0),
             positionMs = player.currentPosition,
             shuffle = player.shuffleModeEnabled,
             repeatMode = player.repeatMode,
@@ -184,8 +204,11 @@ class PlaybackService : MediaSessionService() {
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> = Futures.immediateFuture(
             mediaItems.map { item ->
-                if (item.localConfiguration != null) item
-                else item.buildUpon().setUri(songUri(item.mediaId.toLong())).build()
+                when {
+                    item.localConfiguration != null -> item
+                    Links.isLink(item.mediaId) -> item.buildUpon().setUri(Links.urlOf(item.mediaId)).build()
+                    else -> item.buildUpon().setUri(songUri(item.mediaId.toLong())).build()
+                }
             }.toMutableList(),
         )
 
