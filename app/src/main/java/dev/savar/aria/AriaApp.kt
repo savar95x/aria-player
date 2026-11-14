@@ -21,6 +21,11 @@ class AriaApp : Application(), SingletonImageLoader.Factory {
     /** Lazy: the player process only touches the bits it needs (saved queue), never settings/library. */
     val container: AppContainer by lazy { AppContainer(this) }
 
+    override fun onCreate() {
+        super.onCreate()
+        CrashActivity.install(this)
+    }
+
     override fun newImageLoader(context: PlatformContext): ImageLoader =
         ImageLoader.Builder(context)
             .components {
