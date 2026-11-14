@@ -3,7 +3,15 @@
 package dev.savar.aria.ui.screens
 
 import android.os.SystemClock
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.CompositionLocalProvider
+import dev.savar.aria.ui.LocalAnimatedScope
+import dev.savar.aria.ui.Motion
+import dev.savar.aria.ui.sharedArt
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -98,6 +106,8 @@ import dev.savar.aria.ui.components.ArtImage
 import dev.savar.aria.ui.components.formatDuration
 import kotlinx.coroutines.delay
 
+private const val NowPlayingArtKey = "now-playing-art"
+
 private fun AppContainer.artFor(id: Long?): SongArt? =
     id?.let { library.song(it)?.art ?: SongArt(songUri(it), version = 0) }
 
@@ -116,6 +126,7 @@ fun MiniPlayer(
     container: AppContainer,
     player: PlayerUiState,
     vm: PlayerViewModel,
+    artVisible: Boolean,
     onClick: () -> Unit,
 ) {
     val meta = player.current?.mediaMetadata
@@ -133,23 +144,41 @@ fun MiniPlayer(
                 Modifier.padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ArtImage(container.artFor(player.currentId)?.copy(sizePx = 160), Modifier.size(48.dp), RoundedCornerShape(12.dp))
+                // Fixed slot so the row doesn't reflow while the art flies up to the now-playing page.
+                Box(Modifier.size(48.dp)) {
+                    AnimatedVisibility(visible = artVisible, enter = fadeIn(), exit = fadeOut()) {
+                        CompositionLocalProvider(LocalAnimatedScope provides this) {
+                            ArtImage(
+                                container.artFor(player.currentId)?.copy(sizePx = 160),
+                                Modifier.sharedArt(NowPlayingArtKey).fillMaxSize(),
+                                RoundedCornerShape(12.dp),
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        meta?.title?.toString().orEmpty(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        meta?.artist?.toString().orEmpty(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                AnimatedContent(
+                    targetState = meta?.title?.toString().orEmpty() to meta?.artist?.toString().orEmpty(),
+                    transitionSpec = { Motion.trackChange() },
+                    modifier = Modifier.weight(1f),
+                    label = "miniTitle",
+                ) { (title, artist) ->
+                    Column {
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            artist,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 IconButton(onClick = vm::togglePlay) {
                     Icon(if (player.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/pause")
@@ -247,27 +276,35 @@ fun NowPlayingScreen(
             Spacer(Modifier.weight(0.6f))
             ArtImage(
                 art?.copy(sizePx = 1024),
-                Modifier.fillMaxWidth().aspectRatio(1f),
+                Modifier.sharedArt(NowPlayingArtKey).fillMaxWidth().aspectRatio(1f),
                 RoundedCornerShape(28.dp),
+                placeholder = art?.copy(sizePx = 160),
             )
             Spacer(Modifier.weight(0.5f))
 
             // Titles
+            AnimatedContent(
+                targetState = meta?.title?.toString().orEmpty() to meta?.artist?.toString().orEmpty(),
+                transitionSpec = { Motion.trackChange() },
+                modifier = Modifier.fillMaxWidth(),
+                label = "npTitle",
+            ) { (title, artist) ->
             Column(Modifier.fillMaxWidth()) {
                 Text(
-                    meta?.title?.toString().orEmpty(),
+                    title,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     modifier = Modifier.basicMarquee(),
                 )
                 Text(
-                    meta?.artist?.toString().orEmpty(),
+                    artist,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     modifier = Modifier.basicMarquee(),
                 )
+            }
             }
             Spacer(Modifier.height(16.dp))
             SeekBar(player, vm)

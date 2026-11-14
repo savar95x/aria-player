@@ -6,7 +6,18 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.navigation.NamedNavArgument
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraphBuilder
+import kotlin.coroutines.cancellation.CancellationException
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -124,6 +135,7 @@ fun AriaRoot(container: AppContainer) {
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun Library(container: AppContainer) {
     val vm: PlayerViewModel = viewModel()
@@ -149,10 +161,24 @@ private fun Library(container: AppContainer) {
     val hasMini = player.current != null
     val bottomPadding: Dp = (if (hasMini) 78.dp else 0.dp) + (if (showNavBar) 80.dp else 8.dp) + 8.dp
 
+    // Drag-back progress for the now-playing sheet (0 = open, 1 = fully pulled back).
+    var backProgress by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(nowPlayingOpen) { if (nowPlayingOpen) backProgress = 0f }
+
     CompositionLocalProvider(LocalBottomPadding provides bottomPadding) {
+      SharedTransitionLayout(Modifier.fillMaxSize()) {
+       CompositionLocalProvider(LocalSharedTransitionScope provides this) {
         Box(Modifier.fillMaxSize()) {
-            NavHost(navController = nav, startDestination = "home", modifier = Modifier.fillMaxSize()) {
-                composable("home") {
+            NavHost(
+                navController = nav,
+                startDestination = "home",
+                modifier = Modifier.fillMaxSize(),
+                enterTransition = Motion.Enter,
+                exitTransition = Motion.Exit,
+                popEnterTransition = Motion.PopEnter,
+                popExitTransition = Motion.PopExit,
+            ) {
+                screen("home") {
                     HomeScreen(
                         container = container,
                         player = player,
@@ -165,7 +191,7 @@ private fun Library(container: AppContainer) {
                         tab = tab,
                     )
                 }
-                composable("search") {
+                screen("search") {
                     SearchScreen(
                         container = container,
                         player = player,
@@ -176,7 +202,7 @@ private fun Library(container: AppContainer) {
                         onArtist = { nav.navigate("artist/${Uri.encode(it)}") },
                     )
                 }
-                composable("album/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
+                screen("album/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
                     AlbumScreen(
                         albumId = entry.arguments?.getLong("id") ?: 0L,
                         container = container,
@@ -187,7 +213,7 @@ private fun Library(container: AppContainer) {
                         onArtist = { nav.navigate("artist/${Uri.encode(it)}") },
                     )
                 }
-                composable("artist/{name}") { entry ->
+                screen("artist/{name}") { entry ->
                     ArtistScreen(
                         name = Uri.decode(entry.arguments?.getString("name").orEmpty()),
                         container = container,
@@ -197,13 +223,13 @@ private fun Library(container: AppContainer) {
                         onBack = { nav.popBackStack() },
                     )
                 }
-                composable("settings") {
+                screen("settings") {
                     SettingsScreen(container, onBack = { nav.popBackStack() }, onFolders = { nav.navigate("folders") })
                 }
-                composable("folders") {
+                screen("folders") {
                     FoldersScreen(container, onBack = { nav.popBackStack() })
                 }
-                composable("tags/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
+                screen("tags/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
                     TagEditorScreen(
                         songId = entry.arguments?.getLong("id") ?: 0L,
                         container = container,
@@ -219,9 +245,16 @@ private fun Library(container: AppContainer) {
                 exit = slideOutVertically { it },
                 modifier = Modifier.align(Alignment.BottomCenter),
             ) {
+                // A tone above the page plus a soft rim along the top edge that fades out down the
+                // sides: separates the dock from a pure-black list without boxing it in.
+                val rim = MaterialTheme.colorScheme.outlineVariant
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        Brush.verticalGradient(0f to rim.copy(alpha = 0.7f), 0.18f to Color.Transparent),
+                    ),
                 ) {
                     Column {
                         AnimatedVisibility(
@@ -229,7 +262,13 @@ private fun Library(container: AppContainer) {
                             enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
                             exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut(),
                         ) {
-                            MiniPlayer(container = container, player = player, vm = vm, onClick = { nowPlayingOpen = true })
+                            MiniPlayer(
+                                container = container,
+                                player = player,
+                                vm = vm,
+                                artVisible = !nowPlayingOpen,
+                                onClick = { nowPlayingOpen = true },
+                            )
                         }
                         AnimatedVisibility(
                             visible = showNavBar,
@@ -251,11 +290,23 @@ private fun Library(container: AppContainer) {
                 }
             }
 
+            // The page fades up while the artwork flies out of the mini player (shared element).
             AnimatedVisibility(
                 visible = nowPlayingOpen && hasMini,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut(),
+                enter = fadeIn(tween(260)) +
+                    slideInVertically(tween(420, easing = Motion.EmphasizedDecelerate)) { it / 6 },
+                exit = fadeOut(tween(220)) +
+                    slideOutVertically(tween(260, easing = Motion.EmphasizedAccelerate)) { it / 6 },
+                modifier = Modifier.graphicsLayer {
+                    val p = backProgress
+                    scaleX = 1f - 0.1f * p
+                    scaleY = 1f - 0.1f * p
+                    translationY = p * 48.dp.toPx()
+                    shape = RoundedCornerShape((32 * p).dp)
+                    clip = p > 0f
+                },
             ) {
+              CompositionLocalProvider(LocalAnimatedScope provides this) {
                 NowPlayingScreen(
                     container = container,
                     player = player,
@@ -265,10 +316,30 @@ private fun Library(container: AppContainer) {
                     onOpenArtist = { name -> nowPlayingOpen = false; nav.navigate("artist/${Uri.encode(name)}") },
                     onEditTags = { id -> nowPlayingOpen = false; nav.navigate("tags/$id") },
                 )
+              }
             }
         }
+       }
+      }
     }
-    BackHandler(enabled = nowPlayingOpen) { nowPlayingOpen = false }
+    // Predictive back: the sheet shrinks with your finger, and closes if you commit.
+    PredictiveBackHandler(enabled = nowPlayingOpen) { events ->
+        try {
+            events.collect { backProgress = it.progress }
+            nowPlayingOpen = false
+        } catch (e: CancellationException) {
+            backProgress = 0f
+            throw e
+        }
+    }
+}
+
+private fun NavGraphBuilder.screen(
+    route: String,
+    arguments: List<NamedNavArgument> = emptyList(),
+    content: @Composable (NavBackStackEntry) -> Unit,
+) = composable(route, arguments) { entry ->
+    CompositionLocalProvider(LocalAnimatedScope provides this) { content(entry) }
 }
 
 @Composable

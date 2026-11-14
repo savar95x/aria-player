@@ -34,7 +34,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import dev.savar.aria.data.Song
 import dev.savar.aria.data.SongArt
 
@@ -44,6 +46,8 @@ fun ArtImage(
     art: SongArt?,
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(12.dp),
+    /** A smaller copy that's likely cached (e.g. from the list); shown while the big one loads. */
+    placeholder: SongArt? = null,
 ) {
     Box(
         modifier = modifier
@@ -58,8 +62,14 @@ fun ArtImage(
             modifier = Modifier.fillMaxSize(0.4f),
         )
         if (art != null) {
+            val context = LocalContext.current
             AsyncImage(
-                model = art,
+                model = remember(art, placeholder) {
+                    ImageRequest.Builder(context)
+                        .data(art)
+                        .placeholderMemoryCacheKey(placeholder?.let { "${it.uri}#${it.version}#${it.sizePx}" })
+                        .build()
+                },
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),

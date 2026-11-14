@@ -26,8 +26,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedContent
+import dev.savar.aria.ui.Motion
+import dev.savar.aria.ui.sharedArt
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -142,7 +143,7 @@ fun HomeScreen(
                 songs == null -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 songs!!.isEmpty() -> EmptyLibrary(onSettings)
                 // Material "fade through" between top-level destinations.
-                else -> Crossfade(targetState = tab, animationSpec = tween(220), label = "homeTab") { t ->
+                else -> AnimatedContent(targetState = tab, transitionSpec = { Motion.fadeThrough() }, label = "homeTab") { t ->
                     when (t) {
                         HomeTab.Songs -> SongsTab(songsList, sorted, sort, player, vm, actions, onSort = container.settings::setSongSort)
                         HomeTab.Albums -> AlbumsTab(albumsGrid, albums, onAlbum)
@@ -211,6 +212,7 @@ private fun SongsTab(
                 isCurrent = song.id == player.currentId,
                 actions = actions,
                 onClick = { vm.play(songs, index) },
+                modifier = Modifier.animateItem(),
             )
         }
         item { NavBarSpacer() }
@@ -245,10 +247,10 @@ private fun AlbumsTab(state: LazyGridState, albums: List<Album>, onAlbum: (Long)
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         items(albums, key = { it.id }) { album ->
-            Column(Modifier.clickable { onAlbum(album.id) }) {
+            Column(Modifier.animateItem().clickable { onAlbum(album.id) }) {
                 ArtImage(
                     album.art.copy(sizePx = 400),
-                    Modifier.fillMaxWidth().aspectRatio(1f),
+                    Modifier.sharedArt("album-${album.id}").fillMaxWidth().aspectRatio(1f),
                     RoundedCornerShape(18.dp),
                 )
                 Spacer(Modifier.height(8.dp))
@@ -280,7 +282,7 @@ private fun ArtistRow(artist: Artist, onClick: () -> Unit) {
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ArtImage(artist.art.copy(sizePx = 160), Modifier.size(52.dp), CircleShape)
+        ArtImage(artist.art.copy(sizePx = 160), Modifier.sharedArt("artist-${artist.name}").size(52.dp), CircleShape)
         Spacer(Modifier.width(14.dp))
         Column {
             Text(artist.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -338,7 +340,12 @@ fun AlbumScreen(
                     Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    ArtImage(album.art.copy(sizePx = 720), Modifier.size(240.dp), RoundedCornerShape(24.dp))
+                    ArtImage(
+                        album.art.copy(sizePx = 720),
+                        Modifier.sharedArt("album-${album.id}").size(240.dp),
+                        RoundedCornerShape(24.dp),
+                        placeholder = album.art.copy(sizePx = 400),
+                    )
                     Spacer(Modifier.height(20.dp))
                     Text(album.title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
                     Text(
@@ -400,7 +407,12 @@ fun ArtistScreen(
         LazyColumn(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize(), contentPadding = listBottomPadding()) {
             item(key = "header") {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    ArtImage(artist.art.copy(sizePx = 480), Modifier.size(168.dp), CircleShape)
+                    ArtImage(
+                        artist.art.copy(sizePx = 480),
+                        Modifier.sharedArt("artist-${artist.name}").size(168.dp),
+                        CircleShape,
+                        placeholder = artist.art.copy(sizePx = 160),
+                    )
                     Spacer(Modifier.height(16.dp))
                     Text(artist.name, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
                     Text(
@@ -487,7 +499,7 @@ fun SearchScreen(
                         Modifier.fillMaxWidth().clickable { onAlbum(album.id) }.padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        ArtImage(album.art.copy(sizePx = 160), Modifier.size(52.dp))
+                        ArtImage(album.art.copy(sizePx = 160), Modifier.sharedArt("album-${album.id}").size(52.dp))
                         Spacer(Modifier.width(14.dp))
                         Column {
                             Text(album.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
