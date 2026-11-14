@@ -47,6 +47,10 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Lyrics
+import androidx.compose.material.icons.automirrored.outlined.QueueMusic
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.rememberCoroutineScope
@@ -303,10 +307,11 @@ fun NowPlayingScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 label = "lyricsMode",
             ) { lyricsMode ->
+            val artKey = if (lyricsMode == showLyrics) Modifier.sharedArt(NowPlayingArtKey) else Modifier
             if (lyricsMode) {
                 Column(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        ArtImage(art?.copy(sizePx = 160), Modifier.size(52.dp), RoundedCornerShape(12.dp))
+                        ArtImage(art?.copy(sizePx = 160), artKey.size(52.dp), RoundedCornerShape(12.dp))
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
                             Text(
@@ -342,7 +347,7 @@ fun NowPlayingScreen(
             Spacer(Modifier.weight(0.6f))
             ArtImage(
                 art?.copy(sizePx = 1024),
-                Modifier.sharedArt(NowPlayingArtKey).fillMaxWidth().aspectRatio(1f),
+                artKey.fillMaxWidth().aspectRatio(1f),
                 RoundedCornerShape(28.dp),
                 placeholder = art?.copy(sizePx = 160),
             )
@@ -381,27 +386,29 @@ fun NowPlayingScreen(
             Controls(player, vm)
             Spacer(Modifier.height(20.dp))
 
-            // Bottom actions
-            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = { showSleep = true }) {
-                    Icon(Icons.Rounded.Bedtime, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (sleep.active) sleepLabel(sleep, now) else "Sleep")
-                }
-                TextButton(
-                    onClick = { showLyrics = !showLyrics },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = if (showLyrics) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
+            // Bottom actions: quiet icons lined up under shuffle / play / repeat.
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val idle = MaterialTheme.colorScheme.onSurfaceVariant
+                val on = MaterialTheme.colorScheme.primary
+                Row(
+                    Modifier.clip(CircleShape).clickable { showSleep = true }.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Rounded.Lyrics, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Lyrics")
+                    Icon(Icons.Outlined.Bedtime, "Sleep timer", Modifier.size(22.dp), tint = if (sleep.active) on else idle)
+                    if (sleep.active) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(sleepLabel(sleep, now), style = MaterialTheme.typography.labelMedium, color = on)
+                    }
                 }
-                TextButton(onClick = { showQueue = true }) {
-                    Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Queue")
+                IconButton(onClick = { showLyrics = !showLyrics }) {
+                    Icon(Icons.Outlined.Lyrics, "Lyrics", Modifier.size(22.dp), tint = if (showLyrics) on else idle)
+                }
+                IconButton(onClick = { showQueue = true }) {
+                    Icon(Icons.AutoMirrored.Outlined.QueueMusic, "Queue", Modifier.size(22.dp), tint = idle)
                 }
             }
         }
@@ -499,61 +506,6 @@ private fun Controls(player: PlayerUiState, vm: PlayerViewModel) {
                 "Repeat",
                 tint = if (player.repeatMode == Player.REPEAT_MODE_OFF) idle else active,
             )
-        }
-    }
-}
-
-@Composable
-fun QueueSheet(player: PlayerUiState, vm: PlayerViewModel, onDismiss: () -> Unit) {
-    val currentPos = player.queue.indexOfFirst { it.index == player.currentIndex }.coerceAtLeast(0)
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = currentPos)
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
-        Text(
-            "Up next · ${player.queue.size}",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-        )
-        LazyColumn(state = listState, modifier = Modifier.fillMaxWidth()) {
-            items(player.queue, key = { "${it.index}_${it.item.mediaId}" }) { entry ->
-                val isCurrent = entry.index == player.currentIndex
-                val meta = entry.item.mediaMetadata
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { vm.skipTo(entry.index) }
-                        .background(if (isCurrent) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f) else Color.Transparent)
-                        .padding(start = 20.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    ArtImage(
-                        entry.item.mediaId.toLongOrNull()?.let { SongArt(songUri(it), 0, 160) },
-                        Modifier.size(44.dp),
-                        RoundedCornerShape(10.dp),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            meta.titleText,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            meta.artistText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    if (!isCurrent) {
-                        IconButton(onClick = { vm.removeAt(entry.index) }) {
-                            Icon(Icons.Rounded.Close, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
         }
     }
 }

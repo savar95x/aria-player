@@ -57,6 +57,12 @@ class PlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     private var controller: MediaController? = null
     private var connecting: Deferred<MediaController?>? = null
 
+    /**
+     * Shuffle reorders the actual queue (so what you see is what plays, and it can be dragged
+     * around). This holds the order to go back to when shuffle is turned off.
+     */
+    private var unshuffledOrder: List<MediaItem>? = null
+
     private val _state = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
@@ -105,6 +111,7 @@ class PlayerViewModel(private val app: Application) : AndroidViewModel(app) {
                 controller = c
                 c.addListener(listener)
                 _sleep.value = Remote.sleepFromExtras(c.sessionExtras)
+                adoptLegacyShuffle(c)
                 refresh(queueChanged = true)
             }
         }.also { connecting = it }
@@ -126,7 +133,7 @@ class PlayerViewModel(private val app: Application) : AndroidViewModel(app) {
                 meta = c.mediaMetadata,
                 currentIndex = c.currentMediaItemIndex,
                 playing = c.playWhenReady && c.playbackState != Player.STATE_ENDED && c.playbackState != Player.STATE_IDLE,
-                shuffle = c.shuffleModeEnabled,
+                shuffle = unshuffledOrder != null,
                 repeatMode = c.repeatMode,
                 durationMs = c.duration.takeIf { it != C.TIME_UNSET }?.coerceAtLeast(0) ?: 0,
                 queue = if (queueChanged) playOrder(c) else s.queue,
@@ -151,16 +158,24 @@ class PlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun play(songs: List<Song>, startIndex: Int = 0, shuffle: Boolean = false) {
         if (songs.isEmpty()) return
         act { c ->
-            c.shuffleModeEnabled = shuffle
-            val start = if (shuffle) Random.nextInt(songs.size) else startIndex.coerceIn(songs.indices)
-            c.setMediaItems(songs.map { it.toMediaItem() }, start, 0)
+            val items = songs.map { it.toMediaItem() }
+            c.shuffleModeEnabled = false
+            if (shuffle) {
+                unshuffledOrder = items
+                c.setMediaItems(items.shuffled(Random), 0, 0)
+            } else {
+                unshuffledOrder = null
+                c.setMediaItems(items, startIndex.coerceIn(songs.indices), 0)
+            }
             c.prepare()
             c.play()
+            refresh(queueChanged = false)
         }
     }
 
     fun playUrl(url: String) = act { c ->
         c.shuffleModeEnabled = false
+        unshuffledOrder = null
         c.setMediaItem(Links.mediaItem(url))
         c.prepare()
         c.play()
@@ -190,7 +205,55 @@ class PlayerViewModel(private val app: Application) : AndroidViewModel(app) {
     fun seekTo(ms: Long) = act { it.seekTo(ms) }
     fun skipTo(index: Int) = act { it.seekTo(index, 0); it.play() }
     fun removeAt(index: Int) = act { it.removeMediaItem(index) }
-    fun toggleShuffle() = act { it.shuffleModeEnabled = !it.shuffleModeEnabled }
+    fun moveItem(from: Int, to: Int) = act { it.moveMediaItem(from, to) }
+
+    fun toggleShuffle() = act { c ->
+        val n = c.mediaItemCount
+        val cur = c.currentMediaItemIndex
+        val items = (0 until n).map { c.getMediaItemAt(it) }
+        val original = unshuffledOrder
+        if (original == null) {
+            unshuffledOrder = items
+            // Current song stays; everything else is shuffled after it.
+            if (n > 1) reorderAroundCurrent(c, listOf(items[cur]) + items.filterIndexed { i, _ -> i != cur }.shuffled(), 0)
+        } else {
+            unshuffledOrder = null
+            // Back to the original order for songs still queued; anything added since goes last.
+            val remaining = items.toMutableList()
+            val restored = original.mapNotNull { o ->
+                remaining.firstOrNull { it.mediaId == o.mediaId }?.also { remaining.remove(it) }
+            } + remaining
+            val at = restored.indexOfFirst { it.mediaId == items.getOrNull(cur)?.mediaId }
+            if (n > 1 && at >= 0) reorderAroundCurrent(c, restored, at)
+        }
+        refresh(queueChanged = false)
+    }
+
+    /**
+     * Rearranges the queue into [target] (whose [targetIndex] is the playing song) without
+     * touching the playing item, so playback never hiccups.
+     */
+    private fun reorderAroundCurrent(c: MediaController, target: List<MediaItem>, targetIndex: Int) {
+        val cur = c.currentMediaItemIndex
+        c.replaceMediaItems(cur + 1, c.mediaItemCount, target.subList(targetIndex + 1, target.size))
+        c.replaceMediaItems(0, cur, target.subList(0, targetIndex))
+    }
+
+    /** Older queues used the player's hidden shuffle order; turn that into a real order once. */
+    private fun adoptLegacyShuffle(c: MediaController) {
+        if (!c.shuffleModeEnabled || c.mediaItemCount < 2) {
+            c.shuffleModeEnabled = false
+            return
+        }
+        val playlist = (0 until c.mediaItemCount).map { c.getMediaItemAt(it) }
+        val order = playOrder(c)
+        val at = order.indexOfFirst { it.index == c.currentMediaItemIndex }
+        c.shuffleModeEnabled = false
+        if (at >= 0) {
+            unshuffledOrder = playlist
+            reorderAroundCurrent(c, order.map { it.item }, at)
+        }
+    }
 
     fun cycleRepeat() = act { c ->
         c.repeatMode = when (c.repeatMode) {
