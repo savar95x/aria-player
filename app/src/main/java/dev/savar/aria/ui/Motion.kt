@@ -93,7 +93,7 @@ fun Modifier.sharedArt(key: String, scope: AnimatedVisibilityScope? = null): Mod
     val animated = scope ?: LocalAnimatedScope.current ?: return this
     return with(shared) {
         this@sharedArt.sharedElement(
-            state = rememberSharedContentState(key),
+            sharedContentState = rememberSharedContentState(key),
             animatedVisibilityScope = animated,
             boundsTransform = Motion.ArtBounds,
         )
