@@ -1,5 +1,10 @@
 package dev.savar.aria.ui.components
 
+import coil3.request.crossfade
+import androidx.compose.runtime.produceState
+import androidx.compose.foundation.shape.CircleShape
+import dev.savar.aria.data.Artist
+import dev.savar.aria.AriaApp
 import dev.savar.aria.ui.theme.rounded
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -152,4 +157,40 @@ fun formatDuration(ms: Long): String {
     val m = (total % 3600) / 60
     val s = total % 60
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+}
+
+/**
+ * An artist's photo (fetched once, then kept on the phone), falling back to their album art.
+ * Cached photos show straight away; a newly fetched one fades in over the album art.
+ */
+@Composable
+fun ArtistImage(
+    artist: Artist,
+    modifier: Modifier = Modifier,
+    sizePx: Int = 160,
+    placeholderPx: Int? = null,
+) {
+    val context = LocalContext.current
+    val photos = remember { (context.applicationContext as AriaApp).container.artistPhotos }
+    val photo by produceState(photos.cached(artist.name), artist.name) {
+        if (value == null) value = photos.get(artist.name)
+    }
+    Box(modifier.clip(CircleShape)) {
+        ArtImage(
+            if (photo == null) artist.art.copy(sizePx = sizePx) else null,
+            Modifier.fillMaxSize(),
+            CircleShape,
+            placeholder = placeholderPx?.let { artist.art.copy(sizePx = it) },
+        )
+        photo?.let { file ->
+            AsyncImage(
+                model = remember(file, sizePx) {
+                    ImageRequest.Builder(context).data(file).size(sizePx).crossfade(true).build()
+                },
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
 }

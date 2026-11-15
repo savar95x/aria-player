@@ -2,6 +2,7 @@
 
 package dev.savar.aria.ui.screens
 
+import dev.savar.aria.ui.theme.playerArtShape
 import dev.savar.aria.ui.theme.cornerDp
 import dev.savar.aria.ui.theme.rounded
 import android.os.SystemClock
@@ -169,7 +170,7 @@ fun MiniPlayer(
                             ArtImage(
                                 container.artFor(player.currentId)?.copy(sizePx = 160),
                                 Modifier.sharedArt(NowPlayingArtKey).fillMaxSize(),
-                                rounded(12.dp),
+                                playerArtShape(),
                             )
                         }
                     }
@@ -323,7 +324,7 @@ fun NowPlayingScreen(
                             ArtImage(
                                 art?.copy(sizePx = 1024),
                                 artKey.fillMaxSize(),
-                                rounded(12.dp),
+                                playerArtShape(),
                                 placeholder = art?.copy(sizePx = 160),
                             )
                         }
@@ -364,7 +365,7 @@ fun NowPlayingScreen(
                 ArtImage(
                     art?.copy(sizePx = 1024),
                     artKey.fillMaxSize(),
-                    rounded(28.dp),
+                    playerArtShape(),
                     placeholder = art?.copy(sizePx = 160),
                 )
             }
@@ -419,6 +420,17 @@ fun NowPlayingScreen(
         }
     }
 
+    // Warm the queue's artwork while the player is open, so the queue opens with it already decoded.
+    val prefetchContext = LocalContext.current
+    LaunchedEffect(player.queue, player.currentIndex) {
+        delay(800)
+        val loader = SingletonImageLoader.get(prefetchContext)
+        val pos = player.queue.indexOfFirst { it.index == player.currentIndex }.coerceAtLeast(0)
+        player.queue.drop((pos - 1).coerceAtLeast(0)).take(16).forEach { e ->
+            val art = e.item.mediaId.toLongOrNull()?.let { container.artFor(it) }?.copy(sizePx = 160) ?: return@forEach
+            loader.enqueue(ImageRequest.Builder(prefetchContext).data(art).size(160).build())
+        }
+    }
     if (showQueue) QueueSheet(player, vm, artFor = { id -> container.artFor(id)?.copy(sizePx = 160) }) { showQueue = false }
     if (showSleep) SleepTimerSheet(vm) { showSleep = false }
 }

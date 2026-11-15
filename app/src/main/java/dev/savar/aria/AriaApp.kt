@@ -6,6 +6,7 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.request.crossfade
+import dev.savar.aria.data.ArtistPhotos
 import dev.savar.aria.data.LyricsRepository
 import dev.savar.aria.data.MusicRepository
 import dev.savar.aria.data.QueueStore
@@ -44,6 +45,7 @@ class AppContainer(context: Context) {
     val library by lazy { MusicRepository(context, settings, scope) }
     val queueStore by lazy { QueueStore(context) }
     val lyrics by lazy { LyricsRepository(context) }
+    val artistPhotos by lazy { ArtistPhotos(context) }
 
     /** A link shared/opened into Aria, waiting for the player to pick it up. */
     val pendingLink = MutableStateFlow<String?>(null)

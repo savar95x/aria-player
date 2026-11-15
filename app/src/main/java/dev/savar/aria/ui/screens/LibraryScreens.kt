@@ -2,6 +2,8 @@
 
 package dev.savar.aria.ui.screens
 
+import dev.savar.aria.ui.theme.albumArtShape
+import dev.savar.aria.ui.components.ArtistImage
 import dev.savar.aria.ui.theme.rounded
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -107,6 +109,11 @@ import dev.savar.aria.data.Album
 import dev.savar.aria.data.Artist
 import dev.savar.aria.data.Song
 import dev.savar.aria.data.SongSort
+import dev.savar.aria.data.AlbumSort
+import dev.savar.aria.data.ArtistSort
+import dev.savar.aria.data.SortOption
+import dev.savar.aria.data.sortAlbums
+import dev.savar.aria.data.sortArtists
 import dev.savar.aria.data.sortSongs
 import dev.savar.aria.ui.LocalBottomPadding
 import dev.savar.aria.ui.PlayerUiState
@@ -142,6 +149,10 @@ fun HomeScreen(
     val settings by container.settings.settings.collectAsStateWithLifecycle()
     val sort = settings?.songSort ?: SongSort.Title
     val sorted = remember(songs, sort) { songs.orEmpty().sortSongs(sort) }
+    val albumSort = settings?.albumSort ?: AlbumSort.Title
+    val sortedAlbums = remember(albums, albumSort) { albums.sortAlbums(albumSort) }
+    val artistSort = settings?.artistSort ?: ArtistSort.Name
+    val sortedArtists = remember(artists, artistSort) { artists.sortArtists(artistSort) }
 
     // Hoisted so each tab keeps its scroll position when you switch away and back.
     val songsList = rememberLazyListState()
@@ -163,12 +174,14 @@ fun HomeScreen(
                         HomeTab.Songs -> SongsTab(songsList, sorted, sort, player, vm, actions, onSort = container.settings::setSongSort)
                         HomeTab.Albums -> AlbumsTab(
                             albumsGrid,
-                            albums,
+                            sortedAlbums,
+                            albumSort,
                             settings?.pinnedAlbums.orEmpty(),
                             onAlbum,
                             container.settings::togglePinned,
+                            onSort = container.settings::setAlbumSort,
                         )
-                        HomeTab.Artists -> ArtistsTab(artistsList, artists, onArtist)
+                        HomeTab.Artists -> ArtistsTab(artistsList, sortedArtists, artistSort, onArtist, container.settings::setArtistSort)
                     }
                 }
             }
@@ -234,7 +247,7 @@ private fun SongsTab(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                SortMenu(sort, onSort)
+                SortMenu(sort, SongSort.entries, onSort)
             }
         }
         itemsIndexed(songs, key = { _, s -> s.id }) { index, song ->
@@ -259,7 +272,7 @@ private fun BoxScope.scrollerModifier(): Modifier = Modifier
     .navigationBarsPadding()
 
 @Composable
-private fun SortMenu(sort: SongSort, onSort: (SongSort) -> Unit) {
+private fun <T : SortOption> SortMenu(sort: T, options: List<T>, onSort: (T) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         TextButton(
@@ -271,7 +284,7 @@ private fun SortMenu(sort: SongSort, onSort: (SongSort) -> Unit) {
             Icon(Icons.AutoMirrored.Rounded.Sort, "Sort", Modifier.size(18.dp))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            SongSort.entries.forEach { option ->
+            options.forEach { option ->
                 DropdownMenuItem(
                     text = { Text(option.label) },
                     onClick = { open = false; onSort(option) },
@@ -292,9 +305,11 @@ private sealed interface GridEntry {
 private fun AlbumsTab(
     state: LazyGridState,
     albums: List<Album>,
+    sort: AlbumSort,
     pinnedKeys: Set<String>,
     onAlbum: (Long) -> Unit,
     onTogglePin: (Album) -> Unit,
+    onSort: (AlbumSort) -> Unit,
 ) {
     val entries = remember(albums, pinnedKeys) {
         val (pinned, rest) = albums.partition { it.pinKey in pinnedKeys }
@@ -315,6 +330,9 @@ private fun AlbumsTab(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
+        item(key = "sort", span = { GridItemSpan(maxLineSpan) }) {
+            CountSortRow("${albums.size} albums") { SortMenu(sort, AlbumSort.entries, onSort) }
+        }
         items(
             entries,
             key = { e -> if (e is GridEntry.Item) e.album.id else "h_" + (e as GridEntry.Header).title },
@@ -342,7 +360,7 @@ private fun AlbumsTab(
                         ArtImage(
                             e.album.art.copy(sizePx = 400),
                             Modifier.sharedArt("album-${e.album.id}").fillMaxWidth().aspectRatio(1f),
-                            rounded(18.dp),
+                            albumArtShape(),
                         )
                         if (e.pinned) {
                             Icon(
@@ -375,30 +393,66 @@ private fun AlbumsTab(
     }
     GridFastScroller(
         state,
-        label = { i -> (entries.getOrNull(i) as? GridEntry.Item)?.album?.title?.scrollInitial() },
+        label = { i ->
+            (entries.getOrNull(i - 1) as? GridEntry.Item)?.album?.let { a ->
+                when (sort) {
+                    AlbumSort.Title -> a.title.scrollInitial()
+                    AlbumSort.Artist -> a.artist.scrollInitial()
+                    AlbumSort.Year -> a.year.takeIf { it > 0 }?.toString()
+                    AlbumSort.DateAdded -> null
+                }
+            }
+        },
         modifier = scrollerModifier(),
     )
     }
 }
 
 @Composable
-private fun ArtistsTab(state: LazyListState, artists: List<Artist>, onArtist: (String) -> Unit) {
+private fun ArtistsTab(
+    state: LazyListState,
+    artists: List<Artist>,
+    sort: ArtistSort,
+    onArtist: (String) -> Unit,
+    onSort: (ArtistSort) -> Unit,
+) {
     Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), state = state, contentPadding = listBottomPadding()) {
-            items(artists, key = { it.name }) { artist -> ArtistRow(artist) { onArtist(artist.name) } }
+            item(key = "sort") {
+                CountSortRow("${artists.size} artists", Modifier.padding(horizontal = 16.dp)) {
+                    SortMenu(sort, ArtistSort.entries, onSort)
+                }
+            }
+            items(artists, key = { it.name }) { artist ->
+                ArtistRow(artist, Modifier.animateItem()) { onArtist(artist.name) }
+            }
             item { NavBarSpacer() }
         }
-        ListFastScroller(state, { i -> artists.getOrNull(i)?.name?.scrollInitial() }, scrollerModifier())
+        ListFastScroller(
+            state,
+            { i -> if (sort == ArtistSort.Name) artists.getOrNull(i - 1)?.name?.scrollInitial() else null },
+            scrollerModifier(),
+        )
+    }
+}
+
+/** Quiet header above a list: how many there are, and how they're sorted. */
+@Composable
+private fun CountSortRow(count: String, modifier: Modifier = Modifier, sortMenu: @Composable () -> Unit) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(count, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.weight(1f))
+        sortMenu()
     }
 }
 
 @Composable
-private fun ArtistRow(artist: Artist, onClick: () -> Unit) {
+private fun ArtistRow(artist: Artist, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ArtImage(artist.art.copy(sizePx = 160), Modifier.sharedArt("artist-${artist.name}").size(52.dp), CircleShape)
+        ArtistImage(artist, Modifier.sharedArt("artist-${artist.name}").size(52.dp))
         Spacer(Modifier.width(14.dp))
         Column {
             Text(artist.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -478,7 +532,7 @@ fun AlbumScreen(
                     ArtImage(
                         album.art.copy(sizePx = 720),
                         Modifier.sharedArt("album-${album.id}").size(240.dp),
-                        rounded(24.dp),
+                        albumArtShape(),
                         placeholder = album.art.copy(sizePx = 400),
                     )
                     Spacer(Modifier.height(20.dp))
@@ -542,11 +596,11 @@ fun ArtistScreen(
         LazyColumn(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize(), contentPadding = listBottomPadding()) {
             item(key = "header") {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    ArtImage(
-                        artist.art.copy(sizePx = 480),
+                    ArtistImage(
+                        artist,
                         Modifier.sharedArt("artist-${artist.name}").size(168.dp),
-                        CircleShape,
-                        placeholder = artist.art.copy(sizePx = 160),
+                        sizePx = 480,
+                        placeholderPx = 160,
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(artist.name, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
@@ -635,7 +689,7 @@ fun SearchScreen(
                         Modifier.fillMaxWidth().clickable { onAlbum(album.id) }.padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        ArtImage(album.art.copy(sizePx = 160), Modifier.sharedArt("album-${album.id}").size(52.dp))
+                        ArtImage(album.art.copy(sizePx = 160), Modifier.sharedArt("album-${album.id}").size(52.dp), albumArtShape())
                         Spacer(Modifier.width(14.dp))
                         Column {
                             Text(album.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)

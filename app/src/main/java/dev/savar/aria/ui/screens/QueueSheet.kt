@@ -2,17 +2,14 @@
 
 package dev.savar.aria.ui.screens
 
+import androidx.compose.runtime.withFrameNanos
 import dev.savar.aria.ui.theme.rounded
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.SheetValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.coerceAtMost
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -121,15 +118,15 @@ fun QueueSheet(
         }
     }
 
-    // The sheet slides up with almost nothing in it; the list joins once it has landed. Building
-    // and drawing the rows during the slide is what made it stutter.
+    // The list joins one frame after the sheet starts sliding (so the sheet's own first frame
+    // stays light) and fades in quickly. Its artwork is warmed up while the player is open.
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var settled by remember { mutableStateOf(false) }
+    var showList by remember { mutableStateOf(false) }
     val listAlpha = remember { Animatable(0f) }
-    LaunchedEffect(settled) { if (settled) listAlpha.animateTo(1f, tween(160)) }
     LaunchedEffect(Unit) {
-        withTimeoutOrNull(700) { snapshotFlow { sheetState.currentValue }.first { it == SheetValue.Expanded } }
-        settled = true
+        withFrameNanos { }
+        showList = true
+        listAlpha.animateTo(1f, tween(120))
     }
     // Fixed height from the start, so the sheet doesn't grow when the list appears.
     val rowHeight = 56.dp
@@ -148,7 +145,7 @@ fun QueueSheet(
         )
         val dragShape = rounded(16.dp)
         Box(Modifier.fillMaxWidth().height(listHeight)) {
-        if (settled) LazyColumn(
+        if (showList) LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().graphicsLayer { alpha = listAlpha.value },
         ) {

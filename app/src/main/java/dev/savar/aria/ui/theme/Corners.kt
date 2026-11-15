@@ -4,7 +4,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -28,3 +36,43 @@ fun scaledShapes(scale: Float) = Shapes(
     large = RoundedCornerShape(16.dp * scale),
     extraLarge = RoundedCornerShape(28.dp * scale),
 )
+
+/**
+ * Corners that follow the item's size: [stops] pairs a width with the radius it should have.
+ * Use the same stops on both ends of a shared-element morph (mini player <-> now playing), and the
+ * radius eases between them as the artwork grows or shrinks, instead of snapping to the
+ * destination's radius at the start of the animation.
+ */
+@Composable
+fun morphingRounded(vararg stops: Pair<Dp, Dp>): Shape {
+    val scale = LocalCornerScale.current
+    return remember(scale, stops.toList()) {
+        SizeMorphShape(stops.map { (w, r) -> w.value to r.value * scale }.sortedBy { it.first })
+    }
+}
+
+private data class SizeMorphShape(val stops: List<Pair<Float, Float>>) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val w = size.minDimension / density.density
+        val r = when {
+            w <= stops.first().first -> stops.first().second
+            w >= stops.last().first -> stops.last().second
+            else -> {
+                val i = stops.indexOfFirst { it.first >= w }
+                val (w0, r0) = stops[i - 1]
+                val (w1, r1) = stops[i]
+                r0 + (r1 - r0) * (w - w0) / (w1 - w0)
+            }
+        }
+        val px = (r * density.density).coerceAtMost(size.minDimension / 2)
+        return Outline.Rounded(RoundRect(0f, 0f, size.width, size.height, CornerRadius(px)))
+    }
+}
+
+/** Now-playing cover: 12dp in the mini player / lyrics header, 28dp full size. */
+@Composable
+fun playerArtShape(): Shape = morphingRounded(52.dp to 12.dp, 280.dp to 28.dp)
+
+/** Album cover: 12dp in rows, 18dp as a grid tile, 24dp on the album page. */
+@Composable
+fun albumArtShape(): Shape = morphingRounded(52.dp to 12.dp, 160.dp to 18.dp, 240.dp to 24.dp)

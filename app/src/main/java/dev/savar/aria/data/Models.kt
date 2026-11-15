@@ -73,7 +73,9 @@ data class Artist(
 /** Coil model for embedded/album art of a song; [version] busts the cache after tag edits. */
 data class SongArt(val uri: Uri, val version: Long, val sizePx: Int = 512)
 
-enum class SongSort(val label: String) {
+interface SortOption { val label: String }
+
+enum class SongSort(override val label: String) : SortOption {
     Title("Title"),
     Artist("Artist"),
     Album("Album"),
@@ -85,4 +87,32 @@ fun List<Song>.sortSongs(sort: SongSort): List<Song> = when (sort) {
     SongSort.Artist -> sortedWith(compareBy({ it.artist.lowercase() }, { it.album.lowercase() }, { it.track }))
     SongSort.Album -> sortedWith(compareBy({ it.album.lowercase() }, { it.track }))
     SongSort.DateAdded -> sortedByDescending { it.dateAdded }
+}
+
+enum class AlbumSort(override val label: String) : SortOption {
+    Title("Title"),
+    Artist("Artist"),
+    Year("Year"),
+    DateAdded("Recently added"),
+}
+
+fun List<Album>.sortAlbums(sort: AlbumSort): List<Album> = when (sort) {
+    AlbumSort.Title -> sortedBy { it.title.lowercase() }
+    AlbumSort.Artist -> sortedWith(compareBy({ it.artist.lowercase() }, { it.year }, { it.title.lowercase() }))
+    AlbumSort.Year -> sortedWith(compareByDescending<Album> { it.year }.thenBy { it.title.lowercase() })
+    AlbumSort.DateAdded -> sortedByDescending { a -> a.songs.maxOf { it.dateAdded } }
+}
+
+enum class ArtistSort(override val label: String) : SortOption {
+    Name("Name"),
+    Songs("Most songs"),
+    Albums("Most albums"),
+    DateAdded("Recently added"),
+}
+
+fun List<Artist>.sortArtists(sort: ArtistSort): List<Artist> = when (sort) {
+    ArtistSort.Name -> sortedBy { it.name.lowercase() }
+    ArtistSort.Songs -> sortedWith(compareByDescending<Artist> { it.songs.size }.thenBy { it.name.lowercase() })
+    ArtistSort.Albums -> sortedWith(compareByDescending<Artist> { it.albumCount }.thenBy { it.name.lowercase() })
+    ArtistSort.DateAdded -> sortedByDescending { a -> a.songs.maxOf { it.dateAdded } }
 }
