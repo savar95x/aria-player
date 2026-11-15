@@ -2,6 +2,7 @@
 
 package dev.savar.aria.ui.screens
 
+import dev.savar.aria.ui.theme.pill
 import dev.savar.aria.ui.theme.rounded
 import android.app.Activity
 import android.provider.MediaStore
@@ -145,7 +146,7 @@ fun TagEditorScreen(songId: Long, container: AppContainer, onBack: () -> Unit) {
                         CircularProgressIndicator(Modifier.size(24.dp).padding(end = 4.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(16.dp))
                     } else {
-                        Button(
+                        Button(shape = pill(), 
                             onClick = {
                                 val pi = MediaStore.createWriteRequest(context.contentResolver, listOf(song.uri))
                                 writeRequest.launch(IntentSenderRequest.Builder(pi.intentSender).build())
@@ -187,7 +188,7 @@ fun TagEditorScreen(songId: Long, container: AppContainer, onBack: () -> Unit) {
                         overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(Modifier.height(8.dp))
-                    FilledTonalButton(onClick = { showSearch = true }) {
+                    FilledTonalButton(shape = pill(), onClick = { showSearch = true }) {
                         Icon(Icons.Rounded.CloudDownload, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Find online")

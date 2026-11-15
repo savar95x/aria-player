@@ -2,6 +2,7 @@
 
 package dev.savar.aria.ui.screens
 
+import dev.savar.aria.ui.theme.pill
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -135,7 +136,7 @@ fun ArtistPhotoViewer(artist: Artist, photos: ArtistPhotos, onDismiss: () -> Uni
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            FilledTonalButton(
+            FilledTonalButton(shape = pill(), 
                 onClick = { picking = true },
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 24.dp)
                     .graphicsLayer { alpha = fade },
@@ -253,18 +254,18 @@ private fun ArtistPhotoPicker(artist: Artist, photos: ArtistPhotos, onDone: () -
             Text("Photo for ${artist.name}", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
+                OutlinedButton(shape = pill(), onClick = { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
                     Icon(Icons.Rounded.PhotoLibrary, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Gallery")
                 }
-                OutlinedButton(onClick = { photos.useAlbumArt(artist.name); onDone() }) {
+                OutlinedButton(shape = pill(), onClick = { photos.useAlbumArt(artist.name); onDone() }) {
                     Icon(Icons.Rounded.Image, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text("Album art")
                 }
                 if (photos.isUserChoice(artist.name)) {
-                    OutlinedButton(onClick = { photos.automatic(artist.name); onDone() }) {
+                    OutlinedButton(shape = pill(), onClick = { photos.automatic(artist.name); onDone() }) {
                         Icon(Icons.Rounded.AutoAwesome, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Auto")

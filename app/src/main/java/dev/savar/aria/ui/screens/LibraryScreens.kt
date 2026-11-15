@@ -2,6 +2,7 @@
 
 package dev.savar.aria.ui.screens
 
+import dev.savar.aria.ui.theme.pill
 import dev.savar.aria.ui.theme.albumArtShape
 import dev.savar.aria.ui.components.ArtistImage
 import dev.savar.aria.ui.theme.rounded
@@ -203,7 +204,7 @@ private fun EmptyLibrary(onSettings: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(16.dp))
-        FilledTonalButton(onClick = onSettings) { Text("Folder settings") }
+        FilledTonalButton(shape = pill(), onClick = onSettings) { Text("Folder settings") }
     }
 }
 
@@ -235,7 +236,7 @@ private fun SongsTab(
                 Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = { vm.play(songs, shuffle = true) }) {
+                TextButton(shape = pill(), onClick = { vm.play(songs, shuffle = true) }) {
                     Icon(Icons.Rounded.Shuffle, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Shuffle all")
@@ -273,7 +274,7 @@ private fun BoxScope.scrollerModifier(): Modifier = Modifier
 private fun <T : SortOption> SortMenu(sort: T, options: List<T>, onSort: (T) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
-        TextButton(
+        TextButton(shape = pill(), 
             onClick = { open = true },
             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
         ) {
@@ -477,12 +478,12 @@ private fun BackTopBar(title: String = "", onBack: () -> Unit, actions: @Composa
 private fun PlayShuffleRow(onPlay: () -> Unit, onShuffle: () -> Unit) {
     // Expressive buttons: shape morphs on press.
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Button(onClick = onPlay, shapes = ButtonDefaults.shapes()) {
+        Button(onClick = onPlay, shapes = ButtonDefaults.shapes(shape = pill())) {
             Icon(Icons.Rounded.PlayArrow, null, Modifier.size(20.dp))
             Spacer(Modifier.width(6.dp))
             Text("Play")
         }
-        FilledTonalButton(onClick = onShuffle, shapes = ButtonDefaults.shapes()) {
+        FilledTonalButton(onClick = onShuffle, shapes = ButtonDefaults.shapes(shape = pill())) {
             Icon(Icons.Rounded.Shuffle, null, Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text("Shuffle")
@@ -599,7 +600,7 @@ fun ArtistScreen(
                 Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     ArtistImage(
                         artist,
-                        Modifier.sharedArt("artist-${artist.name}").size(168.dp).clip(CircleShape).clickable { viewingPhoto = true },
+                        Modifier.sharedArt("artist-${artist.name}").size(168.dp).clip(pill()).clickable { viewingPhoto = true },
                         sizePx = 480,
                         placeholderPx = 160,
                     )
@@ -739,7 +740,7 @@ private fun PillRow(modifier: Modifier = Modifier, content: @Composable RowScope
             .fillMaxWidth()
             .height(56.dp)
             .sharedContainer("search-pill")
-            .clip(CircleShape)
+            .clip(pill())
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .then(modifier)
             .padding(horizontal = 4.dp),

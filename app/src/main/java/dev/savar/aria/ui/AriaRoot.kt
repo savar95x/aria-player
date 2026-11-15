@@ -1,5 +1,6 @@
 package dev.savar.aria.ui
 
+import dev.savar.aria.ui.theme.pill
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -418,9 +419,9 @@ private fun PermissionScreen(askedOnce: Boolean, onGrant: () -> Unit, onOpenSett
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
-        Button(onClick = onGrant) { Text("Allow access") }
+        Button(shape = pill(), onClick = onGrant) { Text("Allow access") }
         if (askedOnce) {
-            TextButton(onClick = onOpenSettings) { Text("Open app settings") }
+            TextButton(shape = pill(), onClick = onOpenSettings) { Text("Open app settings") }
         }
     }
 }

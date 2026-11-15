@@ -1,5 +1,6 @@
 package dev.savar.aria.ui.screens
 
+import dev.savar.aria.ui.theme.pill
 import dev.savar.aria.ui.theme.rounded
 import android.os.SystemClock
 import androidx.compose.animation.animateColorAsState
@@ -187,6 +188,6 @@ private fun ManualSearch(title: String, initial: String, onSearch: (String) -> U
             keyboardActions = KeyboardActions(onSearch = { onSearch(query) }),
             modifier = Modifier.fillMaxWidth(),
         )
-        FilledTonalButton(onClick = { onSearch(query) }, enabled = query.isNotBlank()) { Text("Search lyrics") }
+        FilledTonalButton(shape = pill(), onClick = { onSearch(query) }, enabled = query.isNotBlank()) { Text("Search lyrics") }
     }
 }

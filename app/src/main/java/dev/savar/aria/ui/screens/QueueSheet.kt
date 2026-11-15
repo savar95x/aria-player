@@ -2,6 +2,7 @@
 
 package dev.savar.aria.ui.screens
 
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.withFrameNanos
 import dev.savar.aria.ui.theme.rounded
 import androidx.compose.animation.core.Animatable
@@ -82,9 +83,18 @@ fun QueueSheet(
 ) {
     val currentPos = player.queue.indexOfFirst { it.index == player.currentIndex }.coerceAtLeast(0)
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = (currentPos - 1).coerceAtLeast(0))
-    // Local copy so rows move under your finger instantly; synced back when the player confirms.
-    val rows = remember(player.queue) { player.queue.toMutableStateList() }
-    var draggingKey by remember { mutableStateOf<Int?>(null) }
+    // Local copy so rows move under your finger instantly. Never replaced mid-drag (the player sends
+    // updates all the time, and resetting the list under your finger made the row snap back).
+    // Rows are keyed by song id + occurrence, not by queue position: positions all change after a
+    // move, which re-created every row on drop (the flicker/overlap).
+    val rows = remember { mutableStateListOf<QueueRowData>().apply { addAll(keyed(player.queue)) } }
+    var draggingKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(player.queue, draggingKey) {
+        if (draggingKey == null) {
+            val fresh = keyed(player.queue)
+            if (fresh != rows.toList()) { rows.clear(); rows.addAll(fresh) }
+        }
+    }
     var dragStartIndex by remember { mutableStateOf(-1) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
     var autoScroll by remember { mutableFloatStateOf(0f) }
@@ -95,11 +105,18 @@ fun QueueSheet(
         val key = draggingKey ?: return
         val info = listState.layoutInfo.visibleItemsInfo
         val dragged = info.firstOrNull { it.key == key } ?: return
+        val from = rows.indexOfFirst { it.key == key }
+        // Wait for the list to lay out the previous swap before judging the next one (otherwise a
+        // single move fired twice on stale positions and the row jumped about).
+        if (from < 0 || dragged.index != from) return
         val center = dragged.offset + dragOffset + dragged.size / 2f
         val target = info.firstOrNull { it.key != key && center.toInt() in it.offset until it.offset + it.size } ?: return
-        val from = rows.indexOfFirst { it.index == key }
         val to = target.index
-        if (from < 0 || to !in rows.indices) return
+        if (to !in rows.indices) return
+        // Moving the first visible row would make the list scroll along with it: pin the position.
+        if (from == listState.firstVisibleItemIndex || to == listState.firstVisibleItemIndex) {
+            listState.requestScrollToItem(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+        }
         rows.add(to, rows.removeAt(from))
         dragOffset += dragged.offset - target.offset
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -149,8 +166,9 @@ fun QueueSheet(
             state = listState,
             modifier = Modifier.fillMaxSize().graphicsLayer { alpha = listAlpha.value },
         ) {
-            itemsIndexed(rows, key = { _, e -> e.index }) { _, entry ->
-                val isDragging = entry.index == draggingKey
+            itemsIndexed(rows, key = { _, r -> r.key }) { _, row ->
+                val entry = row.entry
+                val isDragging = row.key == draggingKey
                 QueueRow(
                     entry = entry,
                     art = entry.item.mediaId.toLongOrNull()?.let(artFor),
@@ -158,17 +176,17 @@ fun QueueSheet(
                     isDragging = isDragging,
                     onClick = { vm.skipTo(entry.index) },
                     onRemove = { vm.removeAt(entry.index) },
-                    handle = Modifier.pointerInput(entry.index) {
+                    handle = Modifier.pointerInput(row.key) {
                         val edge = 64.dp.toPx()
                         detectDragGestures(
                             onDragStart = {
-                                draggingKey = entry.index
-                                dragStartIndex = rows.indexOfFirst { it.index == entry.index }
+                                draggingKey = row.key
+                                dragStartIndex = rows.indexOfFirst { it.key == row.key }
                                 dragOffset = 0f
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             },
                             onDragEnd = {
-                                val to = rows.indexOfFirst { it.index == entry.index }
+                                val to = rows.indexOfFirst { it.key == row.key }
                                 if (dragStartIndex >= 0 && to >= 0 && to != dragStartIndex) vm.moveItem(dragStartIndex, to)
                                 draggingKey = null
                                 dragOffset = 0f
@@ -184,7 +202,7 @@ fun QueueSheet(
                             dragOffset += amount.y
                             moveIfNeeded()
                             // Scroll when the dragged row nears the top or bottom of the list.
-                            val dragged = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == entry.index }
+                            val dragged = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == row.key }
                             autoScroll = if (dragged == null) 0f else {
                                 val top = dragged.offset + dragOffset
                                 val bottom = top + dragged.size
@@ -266,5 +284,18 @@ private fun QueueRow(
         Box(handle.size(48.dp), contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.DragHandle, "Reorder", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+/** A queue row with a key that survives moves: song id plus which copy of it this is. */
+@androidx.compose.runtime.Immutable
+private data class QueueRowData(val key: String, val entry: QueueEntry)
+
+private fun keyed(queue: List<QueueEntry>): List<QueueRowData> {
+    val seen = HashMap<String, Int>()
+    return queue.map { e ->
+        val id = e.item.mediaId
+        val n = seen.merge(id, 1, Int::plus)!!
+        QueueRowData("$id#$n", e)
     }
 }

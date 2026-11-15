@@ -119,8 +119,10 @@ docs/                  README images (hero.png is a composite made with Pillow f
 `ui/theme/Corners.kt`. Material's own `Shapes` are scaled in `AriaTheme`. Artwork that morphs
 between screens (mini player ↔ now playing, album tile ↔ album page) uses `playerArtShape()` /
 `albumArtShape()`: the radius follows the item's size, so it eases during the shared-element
-transition instead of snapping. Inside `graphicsLayer {}` lambdas (not composable), compute the
-shape outside first.
+transition instead of snapping. Pills and circles (all Buttons, search bar, segmented buttons, artist
+photos) use `pill()`: fully round at default, square at 0. Material's own buttons default to a fixed
+full shape, so always pass `shape = pill()` (or `ButtonDefaults.shapes(shape = pill())`). Inside
+`graphicsLayer {}` lambdas (not composable), compute the shape outside first.
 
 **Shared elements.** Keys: `now-playing-art`, `now-playing-art-mode` (big ↔ lyrics header),
 `album-<id>`, `artist-<name>`. `sharedElement` remeasures content to the animated bounds.
@@ -140,7 +142,8 @@ a 400ms debounce) froze the app or swallowed taps.
 
 **Seek bar.** Holds at 0 until the new song's duration is known (otherwise it races to the end on skip).
 
-**Queue sheet.** Fixed height, list composed one frame after the sheet starts, art pre-decoded while
+**Queue sheet.** Rows are keyed by song id + occurrence (not queue position), the local list is never
+replaced mid-drag, and a swap waits for the previous one to be laid out. Fixed height, list composed one frame after the sheet starts, art pre-decoded while
 the player is open. It stuttered when the list was built during the slide. If it stutters again,
 the next step is an in-window sheet instead of `ModalBottomSheet` (which opens a new window).
 

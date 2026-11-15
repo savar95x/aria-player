@@ -76,3 +76,11 @@ fun playerArtShape(): Shape = morphingRounded(52.dp to 12.dp, 280.dp to 28.dp)
 /** Album cover: 12dp in rows, 18dp as a grid tile, 24dp on the album page. */
 @Composable
 fun albumArtShape(): Shape = morphingRounded(52.dp to 12.dp, 160.dp to 18.dp, 240.dp to 24.dp)
+
+/**
+ * Pills and circles (buttons, the search bar, segmented buttons, artist photos): fully round at the
+ * default roundness and above, squaring off as the slider goes down (square at 0).
+ */
+@Composable
+@ReadOnlyComposable
+fun pill(): RoundedCornerShape = RoundedCornerShape(percent = (50 * LocalCornerScale.current.coerceIn(0f, 1f)).toInt())

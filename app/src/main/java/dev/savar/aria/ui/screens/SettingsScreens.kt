@@ -2,6 +2,7 @@
 
 package dev.savar.aria.ui.screens
 
+import dev.savar.aria.ui.theme.pill
 import kotlin.math.roundToInt
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.mutableFloatStateOf
@@ -171,7 +172,7 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
                                 SegmentedButton(
                                     selected = s.themeMode == mode,
                                     onClick = { store.setTheme(mode) },
-                                    shape = SegmentedButtonDefaults.itemShape(i, ThemeMode.entries.size),
+                                    shape = SegmentedButtonDefaults.itemShape(i, ThemeMode.entries.size, pill()),
                                 ) { Text(mode.name) }
                             }
                         }
@@ -324,7 +325,7 @@ private fun RoundnessRow(value: Float, onChange: (Float) -> Unit) {
                     .clip(RoundedCornerShape(12.dp * local))
                     .background(MaterialTheme.colorScheme.primaryContainer),
             )
-            TextButton(onClick = { local = 1f; onChange(1f) }, enabled = local != 1f) { Text("Reset") }
+            TextButton(shape = pill(), onClick = { local = 1f; onChange(1f) }, enabled = local != 1f) { Text("Reset") }
         }
         Slider(
             value = local,
@@ -371,9 +372,9 @@ private fun FontPicker(current: String?, onPick: (String?) -> Unit, onDismiss: (
             }
         },
         confirmButton = {
-            TextButton(onClick = { onPick(custom.trim()) }, enabled = custom.isNotBlank()) { Text("Use custom") }
+            TextButton(shape = pill(), onClick = { onPick(custom.trim()) }, enabled = custom.isNotBlank()) { Text("Use custom") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(shape = pill(), onClick = onDismiss) { Text("Cancel") } },
     )
 }
 
@@ -403,7 +404,7 @@ fun FoldersScreen(container: AppContainer, onBack: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             SimpleTopBar("Folders", onBack) {
-                if (!filter.isEmpty) TextButton(onClick = container.settings::clearFolderRules) { Text("Reset") }
+                if (!filter.isEmpty) TextButton(shape = pill(), onClick = container.settings::clearFolderRules) { Text("Reset") }
             }
         },
     ) { padding ->

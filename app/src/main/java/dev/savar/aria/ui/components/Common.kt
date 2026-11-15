@@ -1,5 +1,6 @@
 package dev.savar.aria.ui.components
 
+import dev.savar.aria.ui.theme.pill
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.runtime.collectAsState
@@ -202,12 +203,13 @@ fun ArtistImage(
         value = photos.cached(artist.name) ?: photos.get(artist.name, hints)
     }
     val file = photo
-    Box(modifier.clip(CircleShape)) {
+    val shape = pill()
+    Box(modifier.clip(shape)) {
         if (file == null) {
             ArtImage(
                 artist.art.copy(sizePx = sizePx),
                 Modifier.fillMaxSize(),
-                CircleShape,
+                shape,
                 placeholder = placeholderPx?.let { artist.art.copy(sizePx = it) },
             )
         } else {

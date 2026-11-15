@@ -2,6 +2,7 @@
 
 package dev.savar.aria.ui.screens
 
+import dev.savar.aria.ui.theme.pill
 import dev.savar.aria.ui.theme.playerArtShape
 import dev.savar.aria.ui.theme.cornerDp
 import dev.savar.aria.ui.theme.rounded
@@ -406,12 +407,12 @@ fun NowPlayingScreen(
 
             // Bottom actions
             Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = { showSleep = true }) {
+                TextButton(shape = pill(), onClick = { showSleep = true }) {
                     Icon(Icons.Outlined.Bedtime, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(if (sleep.active) sleepLabel(sleep, now) else "Sleep")
                 }
-                TextButton(onClick = { showQueue = true }) {
+                TextButton(shape = pill(), onClick = { showQueue = true }) {
                     Icon(Icons.AutoMirrored.Outlined.QueueMusic, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Queue")
@@ -588,8 +589,8 @@ private fun SleepTimerSheet(vm: PlayerViewModel, onDismiss: () -> Unit) {
             if (state.active) {
                 Spacer(Modifier.height(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = { vm.cancelSleep() }, modifier = Modifier.weight(1f)) { Text("Turn off") }
-                    FilledTonalButton(onClick = { vm.extendSleep(10) }, modifier = Modifier.weight(1f), enabled = !state.waitingForSongEnd) {
+                    OutlinedButton(shape = pill(), onClick = { vm.cancelSleep() }, modifier = Modifier.weight(1f)) { Text("Turn off") }
+                    FilledTonalButton(shape = pill(), onClick = { vm.extendSleep(10) }, modifier = Modifier.weight(1f), enabled = !state.waitingForSongEnd) {
                         Text("+10 min")
                     }
                 }
