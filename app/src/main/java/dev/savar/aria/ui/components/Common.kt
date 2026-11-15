@@ -116,14 +116,14 @@ fun SongRow(
             .fillMaxWidth()
             .padding(horizontal = 8.dp)
             .clip(rowShape)
-            .then(if (isCurrent) Modifier.background(MaterialTheme.colorScheme.secondaryContainer) else Modifier)
+            .then(if (isCurrent) Modifier.background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.32f)) else Modifier)
             .clickable(onClick = onClick)
             .padding(start = 8.dp, end = 0.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {
             isCurrent && leading != null -> Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.GraphicEq, "Playing", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                Icon(Icons.Rounded.GraphicEq, "Playing", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
             }
             leading != null -> leading()
             else -> Box(contentAlignment = Alignment.Center) {
@@ -140,14 +140,14 @@ fun SongRow(
                 song.title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
-                color = if (isCurrent) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 "${song.artist} · ${formatDuration(song.durationMs)}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (isCurrent) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
