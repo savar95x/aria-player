@@ -22,8 +22,9 @@ Principles the owner has stated:
 
 ## How the owner works with you
 
-- Every push to `main` is built by CI and published as a numbered GitHub release (`v0.1.<run>`,
-  with the commit subjects as notes). The owner installs from the Releases page and reports back,
+- Every push to `main` is built by CI and published as a GitHub release `v1.0.<n>` (version scheme in
+  `gradle.properties`: `aria.version` + run number minus `aria.versionBase`; 1.0.0 shipped 2026-11-15,
+  the owner's "daily driver" milestone). Commit subjects become the release notes. The owner installs from the Releases page and reports back,
   often with screenshots or screen recordings. **Ship by pushing to `main`**; no PRs or branches needed.
 - Commit subjects are user-facing (they become release notes). Write them as plain outcomes:
   "Queue opens without a blank pause", not "refactor QueueSheet".
@@ -60,7 +61,7 @@ Toolchain (all deliberately current; see gotchas before changing):
 | Coil | 3.6.3 with `coil-network-okhttp` |
 
 Signing: a shared keystore (`app/aria.keystore`, password in `app/build.gradle.kts`), so every
-build installs over the previous one. `versionCode` = CI run number.
+build installs over the previous one. `versionCode` = CI run number (always increasing); `versionName` = 1.0.<n>.
 
 ## Layout
 

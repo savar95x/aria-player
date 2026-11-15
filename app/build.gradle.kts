@@ -13,7 +13,10 @@ android {
         targetSdk = 35
         // CI run number keeps every build installable over the previous one.
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "0.1.${versionCode}"
+        // 1.0.0 = first CI run after the bump; each later push is 1.0.1, 1.0.2, ... (see gradle.properties).
+        val base = (project.findProperty("aria.versionBase") as String?)?.toIntOrNull() ?: 0
+        val patch = (versionCode - base).coerceAtLeast(0)
+        versionName = "${project.findProperty("aria.version") ?: "1.0"}.$patch"
     }
 
     signingConfigs {

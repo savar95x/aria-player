@@ -59,7 +59,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="v0.1.${GITHUB_RUN_NUMBER}"
+          VER=$(grep '^aria.version=' gradle.properties | cut -d= -f2)
+          BASE=$(grep '^aria.versionBase=' gradle.properties | cut -d= -f2)
+          TAG="v${VER}.$((GITHUB_RUN_NUMBER - BASE))"
           PREV=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
           {
             echo "Install: download **aria.apk** below. It updates over any earlier build."
