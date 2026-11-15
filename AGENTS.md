@@ -104,7 +104,7 @@ app/src/main/java/dev/savar/aria/
     PlayerViewModel    MediaController wrapper; physical shuffle (reorders the real queue around the
                        current item, keeps the original order for un-shuffle)
     Motion.kt          Motion tokens, sharedArt/sharedContainer helpers, verticalSwipe
-    theme/             Theme (Expressive), Fonts (downloadable Google Fonts), Corners (roundness)
+    theme/             Theme (Expressive), Fonts (downloadable Google Fonts; catalogue in data/FontCatalog), Corners
     components/        ArtImage, ArtistImage, SongRow, FastScroller...
     screens/           Library (home tabs, album, artist, search), Player (now playing, mini player,
                        seek bar), QueueSheet, LyricsPane, TagEditor, Settings, ArtistPhotoViewer

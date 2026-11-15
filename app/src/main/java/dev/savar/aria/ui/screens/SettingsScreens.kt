@@ -87,7 +87,7 @@ import dev.savar.aria.ui.theme.FeaturedFonts
 import dev.savar.aria.ui.theme.googleFontFamily
 
 @Composable
-private fun SimpleTopBar(title: String, onBack: () -> Unit, actions: @Composable () -> Unit = {}) {
+internal fun SimpleTopBar(title: String, onBack: () -> Unit, actions: @Composable () -> Unit = {}) {
     TopAppBar(
         title = { Text(title) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") } },
@@ -141,7 +141,7 @@ private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChang
 }
 
 @Composable
-fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () -> Unit) {
+fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () -> Unit, onFonts: () -> Unit) {
     val settings by container.settings.settings.collectAsStateWithLifecycle()
     val s = settings ?: return
     val store = container.settings
@@ -185,7 +185,7 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
                         headlineContent = { Text("Font") },
                         supportingContent = { Text(s.font ?: "System default") },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        modifier = Modifier.clickable { showFonts = true },
+                        modifier = Modifier.clickable(onClick = onFonts),
                     )
                 },
             )
