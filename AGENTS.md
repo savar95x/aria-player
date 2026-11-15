@@ -125,14 +125,17 @@ shape outside first.
 **Shared elements.** Keys: `now-playing-art`, `now-playing-art-mode` (big ↔ lyrics header),
 `album-<id>`, `artist-<name>`. `sharedElement` remeasures content to the animated bounds.
 
-**Navigation (ui/Pages.kt).** No Navigation-Compose. NavHost drew the page being *left* on top until
-its exit animation ended, so taps during a back animation hit the leaving page (tapping an artist in the
-list played a song from the artist page sliding away), and back pressed mid-animation jammed it. Our own
-`Pages` back stack + `SeekableTransitionState` + `AnimatedContent`: the destination is always drawn and
-touched on top (`targetContentZIndex` rises every change), page state is kept per visit with
-`SaveableStateHolder`, and predictive back seeks the transition (or just pops on release if an animation
-is running). **Never block or debounce input** waiting for animations: the owner compares against Metro,
-where you can tap through any transition. Earlier guards (RESUMED-only taps, a touch-eating overlay,
+**Navigation (ui/Pages.kt).** No Navigation-Compose. Modelled on Fragment transitions in Retro/Metro:
+the instant you navigate, the page you're leaving stops being touchable and only animates out; the
+destination is live and on top from its first frame. `PageHost` gives every on-screen page its own
+`Transition.AnimatedVisibility` (driven by one `SeekableTransitionState`, so predictive back seeks it),
+composes the destination last (on top), and puts a touch-swallowing layer over every non-destination page.
+Popped pages sit in `Pages.leaving` until their exit finishes. Page state is kept per visit with
+`SaveableStateHolder`. History: NavHost delivered taps during a back animation to the page sliding away
+(tapping an artist in the list played a song from the closing artist page) and jammed when back was
+pressed mid-animation; only reordering z (AnimatedContent `targetContentZIndex`) did NOT fix the taps.
+**Never block or debounce input on the destination**: the owner compares against Metro/Retro, where you
+can tap through any transition. Earlier guards (RESUMED-only taps, whole-screen touch-eating overlay,
 a 400ms debounce) froze the app or swallowed taps.
 
 **Seek bar.** Holds at 0 until the new song's duration is known (otherwise it races to the end on skip).

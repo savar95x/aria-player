@@ -152,7 +152,7 @@ private fun Library(container: AppContainer) {
     // Each change animates on from wherever the current animation is, so taps never wait.
     LaunchedEffect(pages.top) { if (!inPageBack) pageState.animateTo(pages.top) }
     fun go(route: String) = pages.push(route)
-    fun back() { pages.pop()?.let { pageStates.removeState(it.key) } }
+    fun back() { pages.pop() }
     var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
     var showLyrics by rememberSaveable { mutableStateOf(false) }
 
@@ -191,13 +191,7 @@ private fun Library(container: AppContainer) {
       SharedTransitionLayout(Modifier.fillMaxSize()) {
        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
         Box(Modifier.fillMaxSize()) {
-            pageTransition.AnimatedContent(
-                modifier = Modifier.fillMaxSize(),
-                transitionSpec = { pages.transitionSpec(this) },
-                contentKey = { it.key },
-            ) { page ->
-              CompositionLocalProvider(LocalAnimatedScope provides this) {
-                pageStates.SaveableStateProvider(page.key) {
+            PageHost(pages, pageTransition, pageStates, Modifier.fillMaxSize()) { page ->
                     val r = page.route
                     when {
                         r == "home" -> HomeScreen(
@@ -249,8 +243,6 @@ private fun Library(container: AppContainer) {
                             onBack = { back() },
                         )
                     }
-                }
-              }
             }
 
             // One dock for mini player + nav bar: a single surface, so they read as one piece.
@@ -290,7 +282,7 @@ private fun Library(container: AppContainer) {
                                 selected = tab.takeIf { route == "home" },
                                 onSelect = { t ->
                                     tab = t
-                                    pages.popToRoot().forEach { pageStates.removeState(it.key) }
+                                    pages.popToRoot()
                                 },
                             )
                         }
