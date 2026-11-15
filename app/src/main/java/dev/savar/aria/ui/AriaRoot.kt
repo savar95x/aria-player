@@ -145,6 +145,11 @@ private fun Library(container: AppContainer) {
     val vm: PlayerViewModel = viewModel()
     val player by vm.state.collectAsStateWithLifecycle()
     val nav = rememberNavController()
+    // Taps on a page that's still animating in are dropped (Google's recommendation): starting a
+    // new page mid-transition stacks animations, and the back swipe then can't drive its preview.
+    fun go(route: String) {
+        if (nav.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) nav.navigate(route)
+    }
     var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
     var showLyrics by rememberSaveable { mutableStateOf(false) }
 
@@ -152,9 +157,9 @@ private fun Library(container: AppContainer) {
         SongActions(
             onPlayNext = vm::playNext,
             onAddToQueue = vm::addToQueue,
-            onOpenAlbum = { nav.navigate("album/${it.albumId}") },
-            onOpenArtist = { nav.navigate("artist/${Uri.encode(container.library.mainArtist(it.artist))}") },
-            onEditTags = { nav.navigate("tags/${it.id}") },
+            onOpenAlbum = { go("album/${it.albumId}") },
+            onOpenArtist = { go("artist/${Uri.encode(container.library.mainArtist(it.artist))}") },
+            onEditTags = { go("tags/${it.id}") },
         )
     }
     var tab by rememberSaveable { mutableStateOf(HomeTab.Songs) }
@@ -199,10 +204,10 @@ private fun Library(container: AppContainer) {
                         player = player,
                         vm = vm,
                         actions = actions,
-                        onSearch = { nav.navigate("search") },
-                        onSettings = { nav.navigate("settings") },
-                        onAlbum = { nav.navigate("album/$it") },
-                        onArtist = { nav.navigate("artist/${Uri.encode(container.library.mainArtist(it))}") },
+                        onSearch = { go("search") },
+                        onSettings = { go("settings") },
+                        onAlbum = { go("album/$it") },
+                        onArtist = { go("artist/${Uri.encode(container.library.mainArtist(it))}") },
                         tab = tab,
                     )
                 }
@@ -213,8 +218,8 @@ private fun Library(container: AppContainer) {
                         vm = vm,
                         actions = actions,
                         onBack = { nav.popBackStack() },
-                        onAlbum = { nav.navigate("album/$it") },
-                        onArtist = { nav.navigate("artist/${Uri.encode(container.library.mainArtist(it))}") },
+                        onAlbum = { go("album/$it") },
+                        onArtist = { go("artist/${Uri.encode(container.library.mainArtist(it))}") },
                     )
                 }
                 screen("album/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
@@ -225,7 +230,7 @@ private fun Library(container: AppContainer) {
                         vm = vm,
                         actions = actions,
                         onBack = { nav.popBackStack() },
-                        onArtist = { nav.navigate("artist/${Uri.encode(container.library.mainArtist(it))}") },
+                        onArtist = { go("artist/${Uri.encode(container.library.mainArtist(it))}") },
                     )
                 }
                 screen("artist/{name}") { entry ->
@@ -242,7 +247,7 @@ private fun Library(container: AppContainer) {
                     SettingsScreen(
                         container,
                         onBack = { nav.popBackStack() },
-                        onFolders = { nav.navigate("folders") },
+                        onFolders = { go("folders") },
                     )
                 }
                 screen("folders") {

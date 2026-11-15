@@ -37,7 +37,9 @@ object Motion {
     val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
     /** Springy but settled: used for art flying between screens. */
-    val ArtBounds = BoundsTransform { _: Rect, _: Rect -> spring(dampingRatio = 0.9f, stiffness = 700f) }
+    // Critically damped and stiffer: same glide, but no slow settling tail. Navigation counts a page
+    // as "still animating" until its shared artwork stops, and a back swipe can't preview until then.
+    val ArtBounds = BoundsTransform { _: Rect, _: Rect -> spring(dampingRatio = 1f, stiffness = 1000f) }
 
     // Shared X-axis: the new screen slides in a little and fades up; the old one drifts the other way.
     private const val Shift = 10
