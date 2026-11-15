@@ -98,7 +98,7 @@ internal fun SimpleTopBar(title: String, onBack: () -> Unit, actions: @Composabl
 }
 
 @Composable
-private fun SectionTitle(text: String) {
+internal fun SectionTitle(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleSmall,
@@ -112,7 +112,7 @@ private fun SectionTitle(text: String) {
  * small gaps, with the outer corners rounder than the inner ones.
  */
 @Composable
-private fun SettingsGroup(vararg rows: @Composable () -> Unit) {
+internal fun SettingsGroup(vararg rows: @Composable () -> Unit) {
     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         rows.forEachIndexed { i, row ->
             val big = cornerDp(24.dp)

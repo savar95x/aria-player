@@ -92,6 +92,7 @@ import dev.savar.aria.ui.screens.AlbumScreen
 import dev.savar.aria.ui.screens.ArtistScreen
 import dev.savar.aria.ui.screens.FoldersScreen
 import dev.savar.aria.ui.screens.FontsScreen
+import dev.savar.aria.ui.screens.TypefaceScreen
 import dev.savar.aria.ui.screens.HomeScreen
 import dev.savar.aria.ui.screens.HomeTab
 import dev.savar.aria.ui.screens.MiniPlayer
@@ -239,7 +240,8 @@ private fun Library(container: AppContainer) {
                             onFolders = { go("folders") },
                             onFonts = { go("fonts") },
                         )
-                        r == "fonts" -> FontsScreen(container, onBack = { back() })
+                        r == "fonts" -> FontsScreen(container, onBack = { back() }, onTypeface = { go("typeface") })
+                        r == "typeface" -> TypefaceScreen(container, onBack = { back() })
                         r == "folders" -> FoldersScreen(container, onBack = { back() })
                         r.startsWith("tags/") -> TagEditorScreen(
                             songId = r.removePrefix("tags/").toLongOrNull() ?: 0L,

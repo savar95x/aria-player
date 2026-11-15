@@ -2,6 +2,17 @@
 
 package dev.savar.aria.ui.screens
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.AlertDialog
 import kotlin.math.roundToInt
 import dev.savar.aria.ui.theme.pill
 import androidx.compose.runtime.mutableFloatStateOf
@@ -63,11 +74,75 @@ import dev.savar.aria.ui.theme.googleFontFamily
 import dev.savar.aria.ui.theme.rounded
 
 /**
- * Font settings: a live preview on top (the whole app switches the moment you tap a font), then a
- * search over every Google Font with style filters, most popular first, each name in its own face.
+ * Font settings, laid out like a system settings page: one scroll with a live preview, the
+ * typeface (opens [TypefaceScreen]) and the text-style sliders. Reset lives in the overflow menu
+ * behind a confirmation, so it can't be hit by accident.
  */
 @Composable
-fun FontsScreen(container: AppContainer, onBack: () -> Unit) {
+fun FontsScreen(container: AppContainer, onBack: () -> Unit, onTypeface: () -> Unit) {
+    val settings by container.settings.settings.collectAsStateWithLifecycle()
+    val s = settings ?: return
+    var menu by remember { mutableStateOf(false) }
+    var confirmReset by remember { mutableStateOf(false) }
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            SimpleTopBar("Font", onBack) {
+                Box {
+                    IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, "More") }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(text = { Text("Reset to defaults") }, onClick = { menu = false; confirmReset = true })
+                    }
+                }
+            }
+        },
+    ) { padding ->
+        Column(
+            Modifier
+                .padding(top = padding.calculateTopPadding())
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(bottom = 24.dp),
+        ) {
+            FontPreview(s.font)
+            SectionTitle("Typeface")
+            SettingsGroup(
+                {
+                    ListItem(
+                        headlineContent = { Text(s.font ?: "System default") },
+                        supportingContent = { Text("Any Google Font") },
+                        trailingContent = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null) },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier.clickable(onClick = onTypeface),
+                    )
+                },
+            )
+            SectionTitle("Text style")
+            SettingsGroup({ TextStyleControls(s, container) })
+        }
+    }
+
+    if (confirmReset) {
+        AlertDialog(
+            onDismissRequest = { confirmReset = false },
+            title = { Text("Reset font settings?") },
+            text = { Text("Typeface, size, weight and letter spacing go back to their defaults.") },
+            confirmButton = {
+                TextButton(shape = pill(), onClick = { container.settings.resetFontSettings(); confirmReset = false }) { Text("Reset") }
+            },
+            dismissButton = { TextButton(shape = pill(), onClick = { confirmReset = false }) { Text("Cancel") } },
+        )
+    }
+}
+
+/**
+ * Every Google Font: search and style filters stay pinned at the top, the rest of the screen is
+ * the list. Tapping a font applies it straight away (a tick marks the current one).
+ */
+@Composable
+fun TypefaceScreen(container: AppContainer, onBack: () -> Unit) {
     val settings by container.settings.settings.collectAsStateWithLifecycle()
     val current = settings?.font
     val context = LocalContext.current
@@ -83,11 +158,9 @@ fun FontsScreen(container: AppContainer, onBack: () -> Unit) {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { SimpleTopBar("Font", onBack) },
+        topBar = { SimpleTopBar("Typeface", onBack) },
     ) { padding ->
         Column(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) {
-            FontPreview(current)
-            settings?.let { TextStyleControls(it, container) }
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
@@ -97,7 +170,7 @@ fun FontsScreen(container: AppContainer, onBack: () -> Unit) {
                 trailingIcon = {
                     if (query.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Close, "Clear") }
                 },
-                shape = rounded(28.dp),
+                shape = pill(),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             )
             LazyRow(
@@ -122,7 +195,7 @@ fun FontsScreen(container: AppContainer, onBack: () -> Unit) {
                     }
                     shown.isEmpty() -> item(key = "none") {
                         Text(
-                            "No Google Font matches “$q”.",
+                            "No Google Font matches \u201c$q\u201d.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(24.dp),
                         )
@@ -143,19 +216,17 @@ private fun TextStyleControls(s: dev.savar.aria.data.AppSettings, container: App
     var size by remember(s.textScale) { mutableFloatStateOf(s.textScale) }
     var weight by remember(s.weightDelta) { mutableFloatStateOf(s.weightDelta.toFloat()) }
     var spacing by remember(s.letterSpacing) { mutableFloatStateOf(s.letterSpacing) }
-    val changed = s.textScale != 1f || s.weightDelta != 0 || s.letterSpacing != 0f
-    Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp)) {
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
         StyleSlider("Size", "${(size * 100).roundToInt()}%", size, 0.8f..1.3f, steps = 9, onChange = { size = it }) {
             store.setTextScale(size)
         }
         StyleSlider("Weight", weightLabel(weight.roundToInt()), weight, -300f..300f, steps = 5, onChange = { weight = it }) {
             store.setWeightDelta(weight.roundToInt())
         }
-        StyleSlider("Letter spacing", if (spacing == 0f) "Default" else "%+.2f em".format(spacing), spacing, -0.05f..0.15f, steps = 7, onChange = { spacing = it }) {
+        StyleSlider("Letter spacing", spacingLabel(spacing), spacing, -5f..5f, steps = 0, onChange = { spacing = it }) {
+            // Snap to "default" near zero so it's easy to get back to the font's own spacing.
+            spacing = if (kotlin.math.abs(spacing) < 0.15f) 0f else (spacing * 10).roundToInt() / 10f
             store.setLetterSpacing(spacing)
-        }
-        if (changed) {
-            TextButton(shape = pill(), onClick = store::resetTextStyle, modifier = Modifier.align(Alignment.End)) { Text("Reset size, weight & spacing") }
         }
     }
 }
@@ -165,6 +236,8 @@ private fun weightLabel(delta: Int) = when {
     delta < 0 -> "Lighter ${-delta / 100}"
     else -> "Bolder ${delta / 100}"
 }
+
+private fun spacingLabel(px: Float) = if (kotlin.math.abs(px) < 0.15f) "Default" else "%+.1f px".format(px)
 
 @Composable
 private fun StyleSlider(
@@ -189,7 +262,7 @@ private fun FontPreview(current: String?) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainer,
         shape = rounded(24.dp),
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
     ) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.Bottom) {

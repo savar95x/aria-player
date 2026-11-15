@@ -4,7 +4,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
@@ -47,7 +47,7 @@ fun typographyFor(font: String?, textScale: Float = 1f, weightDelta: Int = 0, le
         fontSize = fontSize * scale,
         lineHeight = if (lineHeight.isSpecified) lineHeight * scale else lineHeight,
         fontWeight = FontWeight(((fontWeight ?: FontWeight.Normal).weight + weightDelta).coerceIn(100, 900)),
-        letterSpacing = if (letterSpacing == 0f) this.letterSpacing else letterSpacing.em,
+        letterSpacing = if (letterSpacing == 0f) this.letterSpacing else letterSpacing.sp,
     )
     return Typography(
         displayLarge = base.displayLarge.f(),
