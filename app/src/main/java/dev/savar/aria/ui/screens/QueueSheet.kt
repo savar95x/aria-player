@@ -67,7 +67,12 @@ import kotlinx.coroutines.launch
  * Rows are keyed by their original position, so they keep their identity while you drag.
  */
 @Composable
-fun QueueSheet(player: PlayerUiState, vm: PlayerViewModel, onDismiss: () -> Unit) {
+fun QueueSheet(
+    player: PlayerUiState,
+    vm: PlayerViewModel,
+    artFor: (Long) -> SongArt?,
+    onDismiss: () -> Unit,
+) {
     val currentPos = player.queue.indexOfFirst { it.index == player.currentIndex }.coerceAtLeast(0)
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = (currentPos - 1).coerceAtLeast(0))
     // Local copy so rows move under your finger instantly; synced back when the player confirms.
@@ -119,11 +124,11 @@ fun QueueSheet(player: PlayerUiState, vm: PlayerViewModel, onDismiss: () -> Unit
         LazyColumn(state = listState, modifier = Modifier.fillMaxWidth()) {
             itemsIndexed(rows, key = { _, e -> e.index }) { _, entry ->
                 val isDragging = entry.index == draggingKey
-                val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "dragElevation")
                 QueueRow(
                     entry = entry,
+                    art = entry.item.mediaId.toLongOrNull()?.let(artFor),
                     isCurrent = entry.index == player.currentIndex,
-                    elevation = elevation,
+                    isDragging = isDragging,
                     onClick = { vm.skipTo(entry.index) },
                     onRemove = { vm.removeAt(entry.index) },
                     handle = Modifier.pointerInput(entry.index) {
@@ -165,7 +170,12 @@ fun QueueSheet(player: PlayerUiState, vm: PlayerViewModel, onDismiss: () -> Unit
                         }
                     },
                     modifier = if (isDragging) {
-                        Modifier.zIndex(1f).graphicsLayer { translationY = dragOffset }
+                        Modifier.zIndex(1f).graphicsLayer {
+                            translationY = dragOffset
+                            shadowElevation = 8.dp.toPx()
+                            shape = RoundedCornerShape(16.dp)
+                            clip = true
+                        }
                     } else {
                         Modifier.animateItem()
                     },
@@ -175,64 +185,58 @@ fun QueueSheet(player: PlayerUiState, vm: PlayerViewModel, onDismiss: () -> Unit
     }
 }
 
+/** Plain row (no per-row Surface/elevation layer), so opening a long queue stays smooth. */
 @Composable
 private fun QueueRow(
     entry: QueueEntry,
+    art: SongArt?,
     isCurrent: Boolean,
-    elevation: androidx.compose.ui.unit.Dp,
+    isDragging: Boolean,
     onClick: () -> Unit,
     onRemove: () -> Unit,
     handle: Modifier,
     modifier: Modifier,
 ) {
     val meta = entry.item.mediaMetadata
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = when {
-            elevation > 0.dp -> MaterialTheme.colorScheme.surfaceContainerHigh
-            isCurrent -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-            else -> Color.Transparent
-        },
-        shadowElevation = elevation,
+    val background = when {
+        isDragging -> MaterialTheme.colorScheme.surfaceContainerHigh
+        isCurrent -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        else -> Color.Transparent
+    }
+    Row(
+        modifier
+            .fillMaxWidth()
+            .background(background)
+            .clickable(onClick = onClick)
+            .padding(start = 20.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(start = 20.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ArtImage(
-                entry.item.mediaId.toLongOrNull()?.let { SongArt(songUri(it), 0, 160) },
-                Modifier.size(44.dp),
-                RoundedCornerShape(10.dp),
+        ArtImage(art, Modifier.size(44.dp), RoundedCornerShape(10.dp))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                meta.titleText,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    meta.titleText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    meta.artistText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Text(
+                meta.artistText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (!isCurrent) {
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Rounded.Close, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (!isCurrent) {
-                IconButton(onClick = onRemove) {
-                    Icon(Icons.Rounded.Close, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            // Grab here to drag.
-            Box(handle.size(48.dp), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.DragHandle, "Reorder", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+        }
+        // Grab here to drag.
+        Box(handle.size(48.dp), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.DragHandle, "Reorder", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

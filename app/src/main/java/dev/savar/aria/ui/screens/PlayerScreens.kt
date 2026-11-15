@@ -417,7 +417,7 @@ fun NowPlayingScreen(
         }
     }
 
-    if (showQueue) QueueSheet(player, vm) { showQueue = false }
+    if (showQueue) QueueSheet(player, vm, artFor = { id -> container.artFor(id)?.copy(sizePx = 160) }) { showQueue = false }
     if (showSleep) SleepTimerSheet(vm) { showSleep = false }
 }
 
@@ -435,7 +435,6 @@ private fun NowPlayingMenu(
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
                 text = { Text(if (showLyrics) "Hide lyrics" else "Lyrics") },
-                leadingIcon = { Icon(Icons.Outlined.Lyrics, null) },
                 onClick = { open = false; onToggleLyrics() },
             )
             DropdownMenuItem(text = { Text("Go to album") }, onClick = { open = false; onAlbum() })
