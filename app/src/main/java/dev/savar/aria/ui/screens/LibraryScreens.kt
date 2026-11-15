@@ -504,7 +504,8 @@ fun AlbumScreen(
 ) {
     val albums by container.library.albums.collectAsStateWithLifecycle()
     val settings by container.settings.settings.collectAsStateWithLifecycle()
-    val album = albums.firstOrNull { it.id == albumId }
+    // A song's own MediaStore album id may belong to a merged album with a different id.
+    val album = albums.firstOrNull { it.id == albumId } ?: albums.firstOrNull { a -> a.songs.any { it.albumId == albumId } }
     val pinned = album != null && album.pinKey in settings?.pinnedAlbums.orEmpty()
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,

@@ -42,11 +42,13 @@ class MusicRepository(
 
     val albums: StateFlow<List<Album>> = songs.map { list ->
         list.orEmpty()
-            .groupBy { it.albumId }
-            .map { (id, tracks) ->
+            .groupBy { albumKey(it) }
+            .map { (_, tracks) ->
                 val sorted = tracks.sortedWith(compareBy({ it.track }, { it.title.lowercase() }))
                 Album(
-                    id = id,
+                    // MediaStore can split one album into several ids (e.g. files in different
+                    // folders); the merged album keeps the id most of its songs have.
+                    id = tracks.groupingBy { it.albumId }.eachCount().maxBy { it.value }.key,
                     title = sorted.first().album,
                     artist = sorted.firstNotNullOfOrNull { it.albumArtist }
                         ?: sorted.groupingBy { it.artist }.eachCount().maxBy { it.value }.key,
@@ -56,6 +58,20 @@ class MusicRepository(
             }
             .sortedBy { it.title.lowercase() }
     }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    /**
+     * Which album a song belongs to: album name + album artist (or the lead artist when there's no
+     * album-artist tag), not MediaStore's album id, which splits albums whose files live in
+     * different folders. Untitled albums stay apart by id so they don't merge into one heap.
+     */
+    private fun albumKey(song: Song): String {
+        val title = song.album.trim().lowercase()
+        if (title.isEmpty() || title == "unknown album" || title == "<unknown>") return "id:${song.albumId}"
+        val by = song.albumArtist?.takeIf { it.isNotBlank() }
+            ?: song.artist.split('/', ';', ',', '&').first().split(leadArtistSplit).first()
+        return title + "\u0000" + by.trim().lowercase()
+    }
+
 
     /** Every full artist tag in the library, lower-cased: used to tell real artists from joined credits. */
     @Volatile
@@ -75,7 +91,7 @@ class MusicRepository(
                 Artist(
                     name = name,
                     songs = tracks.sortedWith(compareBy({ it.album.lowercase() }, { it.track })),
-                    albumCount = tracks.distinctBy { it.albumId }.size,
+                    albumCount = tracks.distinctBy { albumKey(it) }.size,
                 )
             }
             .sortedBy { it.name.lowercase() }
@@ -131,6 +147,7 @@ class MusicRepository(
     suspend fun songsByIds(ids: List<Long>): List<Song> = MediaStoreQuery.songsByIds(context, ids)
 
     private companion object {
+        val leadArtistSplit = Regex("\\s+(feat\\.?|ft\\.?|featuring|x)\\s+", RegexOption.IGNORE_CASE)
         val joinedCredit = Regex("""\s*(?:,|&|\bx\b|\bfeat\.?|\bft\.?|\bfeaturing\b)\s*""", RegexOption.IGNORE_CASE)
     }
 }

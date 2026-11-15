@@ -31,6 +31,13 @@ object WidgetState {
     /** Called (via [WidgetUpdateReceiver]) whenever the player's song or play state changes. */
     suspend fun apply(context: Context, id: Long?, title: String, artist: String, isPlaying: Boolean) {
         val app = context.applicationContext
+        if (id == null && title.isEmpty()) {
+            // Player shutting down or between queues: keep showing the last song, paused.
+            ensureLoaded(app)
+            val last = _data.value ?: return
+            if (last.isPlaying) { _data.value = last.copy(isPlaying = false); AriaWidget.render(app) }
+            return
+        }
         val current = _data.value
         val next = if (current != null && current.songId == id) {
             current.copy(isPlaying = isPlaying, title = title, artist = artist)
