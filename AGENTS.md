@@ -125,9 +125,11 @@ shape outside first.
 **Shared elements.** Keys: `now-playing-art`, `now-playing-art-mode` (big ↔ lyrics header),
 `album-<id>`, `artist-<name>`. `sharedElement` remeasures content to the animated bounds.
 
-**Navigation input.** Every NavHost page swallows touches while its enter/exit transition runs
-(overlay in `screen()` in AriaRoot), and `go()` only navigates from a RESUMED page. Tapping into a
-page mid-transition stacked animations and broke the predictive back preview.
+**Navigation input.** Never block touches waiting for a transition to "finish": a back press while a
+page was still sliding in jammed Navigation's AnimatedContent, the transition never completed, and two
+earlier guards (RESUMED-only taps, a touch-eating overlay while `transition.isRunning`) froze the app.
+Now: each page ignores back while its own transition runs (`BackHandler(enabled = transition.isRunning)`
+in `screen()`), and `go()` drops taps within 400ms of the last destination change (clock-based, can't deadlock).
 
 **Seek bar.** Holds at 0 until the new song's duration is known (otherwise it races to the end on skip).
 

@@ -1,6 +1,9 @@
 package dev.savar.aria.ui
 
-import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.navigation.NavController
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.DisposableEffect
+import android.os.SystemClock
 import dev.savar.aria.ui.theme.cornerDp
 import android.Manifest
 import android.content.Intent
@@ -14,7 +17,6 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
@@ -146,10 +148,17 @@ private fun Library(container: AppContainer) {
     val vm: PlayerViewModel = viewModel()
     val player by vm.state.collectAsStateWithLifecycle()
     val nav = rememberNavController()
-    // Taps on a page that's still animating in are dropped (Google's recommendation): starting a
-    // new page mid-transition stacks animations, and the back swipe then can't drive its preview.
+    // Drop a navigation tap that lands within 400ms of the previous page change, so pages can't be
+    // stacked mid-animation. Clock-based on purpose: an earlier version waited for the animation to
+    // report "finished", and when the animation jammed, every tap was dropped forever (app froze).
+    var lastPageChange by remember { mutableLongStateOf(0L) }
+    DisposableEffect(nav) {
+        val listener = NavController.OnDestinationChangedListener { _, _, _ -> lastPageChange = SystemClock.uptimeMillis() }
+        nav.addOnDestinationChangedListener(listener)
+        onDispose { nav.removeOnDestinationChangedListener(listener) }
+    }
     fun go(route: String) {
-        if (nav.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) nav.navigate(route)
+        if (SystemClock.uptimeMillis() - lastPageChange >= 400) nav.navigate(route)
     }
     var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
     var showLyrics by rememberSaveable { mutableStateOf(false) }
@@ -366,20 +375,11 @@ private fun NavGraphBuilder.screen(
     content: @Composable (NavBackStackEntry) -> Unit,
 ) = composable(route, arguments) { entry ->
     CompositionLocalProvider(LocalAnimatedScope provides this) {
-        Box(Modifier.fillMaxSize()) {
-            content(entry)
-            // While this page is sliding in or out, swallow every touch: tapping into a page that's
-            // still animating stacked transitions and broke the back-swipe preview.
-            if (transition.isRunning) {
-                Box(
-                    Modifier.matchParentSize().pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
-                        }
-                    },
-                )
-            }
-        }
+        // A back press while this page is still sliding in/out is ignored until the slide ends:
+        // reversing a page transition mid-way jams Navigation's animation, and the app then sat on a
+        // half-finished page that never became interactive. Never block touches here.
+        BackHandler(enabled = transition.isRunning) { }
+        content(entry)
     }
 }
 
