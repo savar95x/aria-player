@@ -53,8 +53,8 @@
                 android:singleLine="true"
                 android:text="Aria"
                 android:textColor="#FFFFFFFF"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:fontFamily="sans-serif-medium"
+                android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/artist"
@@ -64,7 +64,7 @@
                 android:singleLine="true"
                 android:text="Tap to open"
                 android:textColor="#B8FFFFFF"
-                android:textSize="13sp" />
+                android:textSize="12sp" />
         </LinearLayout>
 
         <FrameLayout

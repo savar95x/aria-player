@@ -168,7 +168,7 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
   A purple-gradient "a with a play button" was rejected as ugly.
 - Widget look (the owner calls it perfect, so don't restyle without asking): #16161C body, 28dp corners,
   blurred cover backdrop + 38% black scrim, square cover with 18dp corners (4x2) / 20dp (4x4),
-  white 16sp bold title, 72%-white 13sp artist, white prev/next, **white** pill play button with a black icon.
+  white 14sp medium (not bold) title, 72%-white 12sp artist, white prev/next, **white** pill play button with a black icon.
 
 ## Tried and reverted
 
