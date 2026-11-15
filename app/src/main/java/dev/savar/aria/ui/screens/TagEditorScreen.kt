@@ -2,6 +2,7 @@
 
 package dev.savar.aria.ui.screens
 
+import dev.savar.aria.ui.theme.rounded
 import android.app.Activity
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -169,9 +170,9 @@ fun TagEditorScreen(songId: Long, container: AppContainer, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(112.dp).clip(RoundedCornerShape(18.dp))) {
+                Box(Modifier.size(112.dp).clip(rounded(18.dp))) {
                     // Old cover stays underneath until the new one has loaded, so it never blanks.
-                    ArtImage(song.art.copy(sizePx = 320), Modifier.fillMaxSize(), RoundedCornerShape(18.dp))
+                    ArtImage(song.art.copy(sizePx = 320), Modifier.fillMaxSize(), rounded(18.dp))
                     if (newArtThumb != null) {
                         AsyncImage(newArtThumb, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     }
@@ -336,7 +337,7 @@ private fun MatchRow(m: TrackMatch, enabled: Boolean, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            Modifier.size(56.dp).clip(rounded(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest),
         ) {
             AsyncImage(m.thumbnailUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         }

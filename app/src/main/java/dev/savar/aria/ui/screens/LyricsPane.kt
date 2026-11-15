@@ -1,5 +1,6 @@
 package dev.savar.aria.ui.screens
 
+import dev.savar.aria.ui.theme.rounded
 import android.os.SystemClock
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -156,7 +157,7 @@ private fun SyncedLyrics(lines: List<LyricLine>, vm: PlayerViewModel) {
                             scaleY = scale
                             transformOrigin = TransformOrigin(0f, 0.5f)
                         }
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(rounded(12.dp))
                         .clickable {
                             vm.seekTo(line.timeMs)
                             lastTouch = 0L

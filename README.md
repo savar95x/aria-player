@@ -1,20 +1,20 @@
-# Aria
+<h1 align="center">Aria</h1>
 
-A lean, native Android music player for local files. Kotlin, Jetpack Compose, Material 3, Media3.
-
-**Download:** [latest release](https://github.com/savar95x/aria-player/releases/latest) ([direct APK](https://github.com/savar95x/aria-player/releases/latest/download/aria.apk)). Every push to `main` publishes a numbered release with its changes listed. Builds share a signing key, so each one installs over the last.
+<p align="center">A lean, native Android music player for local files.<br/>Kotlin · Jetpack Compose · Material 3 Expressive · Media3</p>
 
 <p align="center">
-  <img src="docs/screenshots/now-playing.jpg" width="19%" alt="Now playing" />
-  <img src="docs/screenshots/lyrics.jpg" width="19%" alt="Synced lyrics" />
-  <img src="docs/screenshots/songs.jpg" width="19%" alt="Songs" />
-  <img src="docs/screenshots/albums.jpg" width="19%" alt="Pinned albums" />
-  <img src="docs/screenshots/settings.jpg" width="19%" alt="Settings" />
+  <a href="https://github.com/savar95x/aria-player/releases/latest/download/aria.apk"><b>Download APK</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://github.com/savar95x/aria-player/releases">All releases</a>
 </p>
+
+<p align="center"><img src="docs/hero.png" width="100%" alt="Albums, now playing and synced lyrics" /></p>
+
+Every push to `main` publishes a numbered release with its changes listed. Builds share a signing key, so each one installs over the last.
 
 ## What's in it
 
-- **Material 3 + AMOLED.** Wallpaper colours (Material You), pure black dark theme, light/dark/system.
+- **Material 3 + AMOLED.** Wallpaper colours (Material You), pure black dark theme, light/dark/system, adjustable corner roundness.
 - **Any Google Font.** Pick from a shortlist or type any family name from fonts.google.com.
 - **Home-screen widget.** Blurred-artwork backdrop. Resizes from 2×2 (art + play) to 4×2 and 4×4 (art, titles, controls). Works after a reboot without opening the app.
 - **Sleep timer.** Fades out, or waits for the current song to finish. Extend by +10 min.
@@ -24,6 +24,16 @@ A lean, native Android music player for local files. Kotlin, Jetpack Compose, Ma
 - **Play links.** Paste or share any audio / stream URL (mp3, HLS, internet radio).
 - **Pinned albums**, a draggable queue, real shuffle, fast scroller, Material 3 Expressive motion.
 - Songs / Albums / Artists, search, shuffle/repeat. Remembers the queue and position across restarts. Headset play button resumes the last session.
+
+<details>
+<summary><b>More screenshots</b></summary>
+<br/>
+<p align="center">
+  <img src="docs/screenshots/songs.jpg" width="32%" alt="Songs" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/settings.jpg" width="32%" alt="Settings" />
+</p>
+</details>
 
 ## Building
 

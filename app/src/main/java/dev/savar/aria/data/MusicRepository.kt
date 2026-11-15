@@ -57,10 +57,21 @@ class MusicRepository(
             .sortedBy { it.title.lowercase() }
     }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Eagerly, emptyList())
 
+    /** Every full artist tag in the library, lower-cased: used to tell real artists from joined credits. */
+    @Volatile
+    private var knownArtists: Set<String> = emptySet()
+
+    /**
+     * Artists tab only: songs are grouped under their main artist, so "Frank Ocean/Earl Sweatshirt"
+     * and "J. Cole & Future" sit under Frank Ocean and J. Cole. Everywhere else shows the full tag.
+     */
     val artists: StateFlow<List<Artist>> = songs.map { list ->
-        list.orEmpty()
-            .groupBy { it.artist }
-            .map { (name, tracks) ->
+        val all = list.orEmpty()
+        knownArtists = all.mapTo(HashSet()) { it.artist.trim().lowercase() }
+        all.groupBy { mainArtist(it.artist).lowercase() }
+            .map { (_, tracks) ->
+                // Most common spelling of the main artist wins ("Kanye West" over "kanye west").
+                val name = tracks.groupingBy { mainArtist(it.artist) }.eachCount().maxBy { it.value }.key
                 Artist(
                     name = name,
                     songs = tracks.sortedWith(compareBy({ it.album.lowercase() }, { it.track })),
@@ -69,6 +80,20 @@ class MusicRepository(
             }
             .sortedBy { it.name.lowercase() }
     }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    /**
+     * The main artist of a tag. "/" and ";" always separate credits. Commas, "&", "x" and "feat."
+     * only do when the first name is itself an artist in your library, so "Simon & Garfunkel" or
+     * "Tyler, The Creator" stay whole while "J. Cole & Future" goes under J. Cole.
+     */
+    fun mainArtist(raw: String): String {
+        val tag = raw.trim()
+        val bySlash = tag.split('/', ';').first().trim()
+        if (bySlash.isNotEmpty() && bySlash != tag) return bySlash
+        val first = tag.split(joinedCredit).first().trim()
+        return if (first.isNotEmpty() && first != tag && first.lowercase() in knownArtists) first else tag
+    }
+
 
     private val refreshRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private var observing = false
@@ -104,4 +129,8 @@ class MusicRepository(
 
     /** Direct lookup, independent of the cached library (used when restoring the queue). */
     suspend fun songsByIds(ids: List<Long>): List<Song> = MediaStoreQuery.songsByIds(context, ids)
+
+    private companion object {
+        val joinedCredit = Regex("""\s*(?:,|&|\bx\b|\bfeat\.?|\bft\.?|\bfeaturing\b)\s*""", RegexOption.IGNORE_CASE)
+    }
 }

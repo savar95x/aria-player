@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -27,6 +28,8 @@ data class AppSettings(
     val folders: FolderFilter = FolderFilter(),
     /** [Album.pinKey]s, shown first in the Albums tab. */
     val pinnedAlbums: Set<String> = emptySet(),
+    /** Corner roundness: 0 = square, 1 = default, 2 = extra round. */
+    val cornerScale: Float = 1f,
 )
 
 private val Context.dataStore by preferencesDataStore("settings")
@@ -43,6 +46,7 @@ class SettingsStore(context: Context, private val scope: CoroutineScope) {
         val include = stringSetPreferencesKey("folders_include")
         val exclude = stringSetPreferencesKey("folders_exclude")
         val pinned = stringSetPreferencesKey("pinned_albums")
+        val corners = floatPreferencesKey("corner_scale")
     }
 
     /** Null until the first read finishes, so the UI can avoid a theme flash. */
@@ -62,6 +66,7 @@ class SettingsStore(context: Context, private val scope: CoroutineScope) {
         songSort = this[Keys.sort]?.let { runCatching { SongSort.valueOf(it) }.getOrNull() } ?: SongSort.Title,
         folders = FolderFilter(this[Keys.include].orEmpty(), this[Keys.exclude].orEmpty()),
         pinnedAlbums = this[Keys.pinned].orEmpty(),
+        cornerScale = this[Keys.corners] ?: 1f,
     )
 
     private fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
@@ -73,6 +78,7 @@ class SettingsStore(context: Context, private val scope: CoroutineScope) {
     fun setDynamicColor(on: Boolean) = edit { it[Keys.dynamic] = on }
     fun setFont(name: String?) = edit { if (name.isNullOrBlank()) it.remove(Keys.font) else it[Keys.font] = name.trim() }
     fun setSongSort(sort: SongSort) = edit { it[Keys.sort] = sort.name }
+    fun setCornerScale(scale: Float) = edit { it[Keys.corners] = scale.coerceIn(0f, 2f) }
 
     fun setFolderRule(path: String, rule: FolderRule) = edit {
         val include = it[Keys.include].orEmpty() - path

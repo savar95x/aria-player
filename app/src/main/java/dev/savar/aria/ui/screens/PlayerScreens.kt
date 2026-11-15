@@ -2,6 +2,8 @@
 
 package dev.savar.aria.ui.screens
 
+import dev.savar.aria.ui.theme.cornerDp
+import dev.savar.aria.ui.theme.rounded
 import android.os.SystemClock
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -167,7 +169,7 @@ fun MiniPlayer(
                             ArtImage(
                                 container.artFor(player.currentId)?.copy(sizePx = 160),
                                 Modifier.sharedArt(NowPlayingArtKey).fillMaxSize(),
-                                RoundedCornerShape(12.dp),
+                                rounded(12.dp),
                             )
                         }
                     }
@@ -321,7 +323,7 @@ fun NowPlayingScreen(
                             ArtImage(
                                 art?.copy(sizePx = 1024),
                                 artKey.fillMaxSize(),
-                                RoundedCornerShape(12.dp),
+                                rounded(12.dp),
                                 placeholder = art?.copy(sizePx = 160),
                             )
                         }
@@ -362,7 +364,7 @@ fun NowPlayingScreen(
                 ArtImage(
                     art?.copy(sizePx = 1024),
                     artKey.fillMaxSize(),
-                    RoundedCornerShape(28.dp),
+                    rounded(28.dp),
                     placeholder = art?.copy(sizePx = 160),
                 )
             }
@@ -448,17 +450,21 @@ private fun NowPlayingMenu(
 private fun SeekBar(player: PlayerUiState, vm: PlayerViewModel) {
     var position by remember { mutableLongStateOf(0L) }
     var dragging by remember { mutableStateOf<Float?>(null) }
-    LaunchedEffect(player.currentId, player.playing) {
+    // New song: start from zero right away instead of showing the old position against a new length.
+    LaunchedEffect(player.currentId) { position = 0L }
+    LaunchedEffect(player.currentId, player.playing, player.durationMs) {
         while (true) {
             if (dragging == null) position = vm.position()
             if (!player.playing) break
             delay(250)
         }
     }
+    // Until the new song's length is known, hold at 0 (dividing by a placeholder sent the bar to the end).
+    val known = player.durationMs > 0
     val duration = player.durationMs.coerceAtLeast(1)
     Column(Modifier.fillMaxWidth()) {
         Slider(
-            value = dragging ?: (position.toFloat() / duration).coerceIn(0f, 1f),
+            value = dragging ?: if (known) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
             onValueChange = { dragging = it },
             onValueChangeFinished = {
                 dragging?.let {
@@ -494,7 +500,7 @@ private fun Controls(player: PlayerUiState, vm: PlayerViewModel) {
             Icon(Icons.Rounded.SkipPrevious, "Previous", Modifier.size(36.dp))
         }
         // Squircle when paused, rounder while playing.
-        val corner by animateDpAsState(if (player.playing) 40.dp else 26.dp, label = "playCorner")
+        val corner by animateDpAsState(if (player.playing) cornerDp(40.dp) else cornerDp(26.dp), label = "playCorner")
         Box(
             Modifier
                 .size(80.dp)

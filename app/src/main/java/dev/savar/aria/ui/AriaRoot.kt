@@ -1,5 +1,6 @@
 package dev.savar.aria.ui
 
+import dev.savar.aria.ui.theme.cornerDp
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -152,7 +153,7 @@ private fun Library(container: AppContainer) {
             onPlayNext = vm::playNext,
             onAddToQueue = vm::addToQueue,
             onOpenAlbum = { nav.navigate("album/${it.albumId}") },
-            onOpenArtist = { nav.navigate("artist/${Uri.encode(it.artist)}") },
+            onOpenArtist = { nav.navigate("artist/${Uri.encode(container.library.mainArtist(it.artist))}") },
             onEditTags = { nav.navigate("tags/${it.id}") },
         )
     }
@@ -201,7 +202,7 @@ private fun Library(container: AppContainer) {
                         onSearch = { nav.navigate("search") },
                         onSettings = { nav.navigate("settings") },
                         onAlbum = { nav.navigate("album/$it") },
-                        onArtist = { nav.navigate("artist/${Uri.encode(it)}") },
+                        onArtist = { nav.navigate("artist/${Uri.encode(container.library.mainArtist(it))}") },
                         tab = tab,
                     )
                 }
@@ -213,7 +214,7 @@ private fun Library(container: AppContainer) {
                         actions = actions,
                         onBack = { nav.popBackStack() },
                         onAlbum = { nav.navigate("album/$it") },
-                        onArtist = { nav.navigate("artist/${Uri.encode(it)}") },
+                        onArtist = { nav.navigate("artist/${Uri.encode(container.library.mainArtist(it))}") },
                     )
                 }
                 screen("album/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
@@ -224,7 +225,7 @@ private fun Library(container: AppContainer) {
                         vm = vm,
                         actions = actions,
                         onBack = { nav.popBackStack() },
-                        onArtist = { nav.navigate("artist/${Uri.encode(it)}") },
+                        onArtist = { nav.navigate("artist/${Uri.encode(container.library.mainArtist(it))}") },
                     )
                 }
                 screen("artist/{name}") { entry ->
@@ -268,7 +269,7 @@ private fun Library(container: AppContainer) {
                     // Swipe up anywhere on the dock (just above the home gesture) to open the player.
                     modifier = if (hasMini) Modifier.verticalSwipe(onSwipeUp = { nowPlayingOpen = true }) else Modifier,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    shape = RoundedCornerShape(topStart = cornerDp(28.dp), topEnd = cornerDp(28.dp)),
                 ) {
                     Column {
                         AnimatedVisibility(
@@ -305,6 +306,7 @@ private fun Library(container: AppContainer) {
             }
 
             // The page fades up while the artwork flies out of the mini player (shared element).
+            val backCorner = cornerDp(32.dp)
             AnimatedVisibility(
                 visible = nowPlayingOpen && hasMini,
                 enter = fadeIn(tween(260)) +
@@ -316,7 +318,7 @@ private fun Library(container: AppContainer) {
                     scaleX = 1f - 0.1f * p
                     scaleY = 1f - 0.1f * p
                     translationY = p * 48.dp.toPx()
-                    shape = RoundedCornerShape((32 * p).dp)
+                    shape = RoundedCornerShape(backCorner * p)
                     clip = p > 0f
                 },
             ) {
@@ -327,7 +329,7 @@ private fun Library(container: AppContainer) {
                     vm = vm,
                     onCollapse = { nowPlayingOpen = false },
                     onOpenAlbum = { id -> nowPlayingOpen = false; nav.navigate("album/$id") },
-                    onOpenArtist = { name -> nowPlayingOpen = false; nav.navigate("artist/${Uri.encode(name)}") },
+                    onOpenArtist = { name -> nowPlayingOpen = false; nav.navigate("artist/${Uri.encode(container.library.mainArtist(name))}") },
                     onEditTags = { id -> nowPlayingOpen = false; nav.navigate("tags/$id") },
                     showLyrics = showLyrics,
                     onShowLyrics = { showLyrics = it },

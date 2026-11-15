@@ -2,7 +2,17 @@
 
 package dev.savar.aria.ui.screens
 
-import androidx.compose.animation.core.animateDpAsState
+import dev.savar.aria.ui.theme.rounded
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.SheetValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.coerceAtMost
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -111,9 +121,24 @@ fun QueueSheet(
         }
     }
 
+    // The sheet slides up with almost nothing in it; the list joins once it has landed. Building
+    // and drawing the rows during the slide is what made it stutter.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var settled by remember { mutableStateOf(false) }
+    val listAlpha = remember { Animatable(0f) }
+    LaunchedEffect(settled) { if (settled) listAlpha.animateTo(1f, tween(160)) }
+    LaunchedEffect(Unit) {
+        withTimeoutOrNull(700) { snapshotFlow { sheetState.currentValue }.first { it == SheetValue.Expanded } }
+        settled = true
+    }
+    // Fixed height from the start, so the sheet doesn't grow when the list appears.
+    val rowHeight = 56.dp
+    val maxHeight = (LocalConfiguration.current.screenHeightDp * 0.78f).dp
+    val listHeight = (rowHeight * rows.size + 24.dp).coerceAtMost(maxHeight)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Text(
@@ -121,7 +146,12 @@ fun QueueSheet(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
         )
-        LazyColumn(state = listState, modifier = Modifier.fillMaxWidth()) {
+        val dragShape = rounded(16.dp)
+        Box(Modifier.fillMaxWidth().height(listHeight)) {
+        if (settled) LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = listAlpha.value },
+        ) {
             itemsIndexed(rows, key = { _, e -> e.index }) { _, entry ->
                 val isDragging = entry.index == draggingKey
                 QueueRow(
@@ -173,7 +203,7 @@ fun QueueSheet(
                         Modifier.zIndex(1f).graphicsLayer {
                             translationY = dragOffset
                             shadowElevation = 8.dp.toPx()
-                            shape = RoundedCornerShape(16.dp)
+                            shape = dragShape
                             clip = true
                         }
                     } else {
@@ -181,6 +211,7 @@ fun QueueSheet(
                     },
                 )
             }
+        }
         }
     }
 }
@@ -211,7 +242,7 @@ private fun QueueRow(
             .padding(start = 20.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ArtImage(art, Modifier.size(44.dp), RoundedCornerShape(10.dp))
+        ArtImage(art, Modifier.size(44.dp), rounded(10.dp))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(

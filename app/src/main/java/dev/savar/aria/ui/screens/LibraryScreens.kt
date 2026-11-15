@@ -2,6 +2,7 @@
 
 package dev.savar.aria.ui.screens
 
+import dev.savar.aria.ui.theme.rounded
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -341,7 +342,7 @@ private fun AlbumsTab(
                         ArtImage(
                             e.album.art.copy(sizePx = 400),
                             Modifier.sharedArt("album-${e.album.id}").fillMaxWidth().aspectRatio(1f),
-                            RoundedCornerShape(18.dp),
+                            rounded(18.dp),
                         )
                         if (e.pinned) {
                             Icon(
@@ -477,7 +478,7 @@ fun AlbumScreen(
                     ArtImage(
                         album.art.copy(sizePx = 720),
                         Modifier.sharedArt("album-${album.id}").size(240.dp),
-                        RoundedCornerShape(24.dp),
+                        rounded(24.dp),
                         placeholder = album.art.copy(sizePx = 400),
                     )
                     Spacer(Modifier.height(20.dp))
@@ -703,7 +704,7 @@ private fun LinkRow(url: String, onPlay: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer),
+            Modifier.size(52.dp).clip(rounded(12.dp)).background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
             Icon(Icons.Rounded.Link, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)

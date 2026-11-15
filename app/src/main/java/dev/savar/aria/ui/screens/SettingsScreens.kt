@@ -2,6 +2,13 @@
 
 package dev.savar.aria.ui.screens
 
+import kotlin.math.roundToInt
+import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.material3.Slider
+import androidx.compose.foundation.background
+import dev.savar.aria.ui.theme.cornerDp
+import dev.savar.aria.ui.theme.rounded
 import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
@@ -106,8 +113,8 @@ private fun SectionTitle(text: String) {
 private fun SettingsGroup(vararg rows: @Composable () -> Unit) {
     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         rows.forEachIndexed { i, row ->
-            val big = 24.dp
-            val small = 6.dp
+            val big = cornerDp(24.dp)
+            val small = cornerDp(6.dp)
             val shape = when {
                 rows.size == 1 -> RoundedCornerShape(big)
                 i == 0 -> RoundedCornerShape(topStart = big, topEnd = big, bottomStart = small, bottomEnd = small)
@@ -171,6 +178,7 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
                 },
                 { SwitchRow("Pure black", "AMOLED-friendly dark theme", s.amoled, store::setAmoled) },
                 { SwitchRow("Wallpaper colors", "Material You accents from your wallpaper", s.dynamicColor, store::setDynamicColor) },
+                { RoundnessRow(s.cornerScale, store::setCornerScale) },
                 {
                     ListItem(
                         headlineContent = { Text("Font") },
@@ -295,6 +303,39 @@ private fun OxygenOsRow() {
     )
 }
 
+/** Live preview while dragging; saved when you let go. */
+@Composable
+private fun RoundnessRow(value: Float, onChange: (Float) -> Unit) {
+    var local by remember(value) { mutableFloatStateOf(value) }
+    Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Corner roundness", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    if (local == 1f) "Default" else "${(local * 100).roundToInt()}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(12.dp * local))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+            )
+            TextButton(onClick = { local = 1f; onChange(1f) }, enabled = local != 1f) { Text("Reset") }
+        }
+        Slider(
+            value = local,
+            onValueChange = { local = it },
+            onValueChangeFinished = { onChange(local) },
+            valueRange = 0f..2f,
+            steps = 7,
+            modifier = Modifier.padding(end = 8.dp),
+        )
+    }
+}
+
 @Composable
 private fun FontPicker(current: String?, onPick: (String?) -> Unit, onDismiss: () -> Unit) {
     var custom by remember { mutableStateOf(current?.takeIf { it !in FeaturedFonts }.orEmpty()) }
@@ -372,7 +413,7 @@ fun FoldersScreen(container: AppContainer, onBack: () -> Unit) {
             item {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = rounded(20.dp),
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                 ) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

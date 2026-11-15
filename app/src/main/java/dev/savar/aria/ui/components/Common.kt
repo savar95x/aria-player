@@ -1,5 +1,6 @@
 package dev.savar.aria.ui.components
 
+import dev.savar.aria.ui.theme.rounded
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -46,7 +47,7 @@ import dev.savar.aria.data.SongArt
 fun ArtImage(
     art: SongArt?,
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(12.dp),
+    shape: Shape = rounded(12.dp),
     /** A smaller copy that's likely cached (e.g. from the list); shown while the big one loads. */
     placeholder: SongArt? = null,
 ) {
