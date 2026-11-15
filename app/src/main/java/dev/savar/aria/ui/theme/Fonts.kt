@@ -4,6 +4,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
@@ -27,7 +28,8 @@ private val fontCache = HashMap<String, FontFamily>()
 fun googleFontFamily(name: String): FontFamily = fontCache.getOrPut(name) {
     val font = GoogleFont(name)
     FontFamily(
-        listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold).map {
+        // Every weight, so the Weight setting can go lighter or bolder (fonts without a weight fall back).
+        (100..900 step 100).map { FontWeight(it) }.map {
             Font(googleFont = font, fontProvider = provider, weight = it)
         },
     )
@@ -36,13 +38,16 @@ fun googleFontFamily(name: String): FontFamily = fontCache.getOrPut(name) {
 /** Material's default sizes read a bit large on a phone this dense; scale every style down. */
 private const val TextScale = 0.92f
 
-fun typographyFor(font: String?): Typography {
+fun typographyFor(font: String?, textScale: Float = 1f, weightDelta: Int = 0, letterSpacing: Float = 0f): Typography {
     val family = font?.let { googleFontFamily(it) }
     val base = Typography()
+    val scale = TextScale * textScale
     fun TextStyle.f() = copy(
         fontFamily = family ?: fontFamily,
-        fontSize = fontSize * TextScale,
-        lineHeight = if (lineHeight.isSpecified) lineHeight * TextScale else lineHeight,
+        fontSize = fontSize * scale,
+        lineHeight = if (lineHeight.isSpecified) lineHeight * scale else lineHeight,
+        fontWeight = FontWeight(((fontWeight ?: FontWeight.Normal).weight + weightDelta).coerceIn(100, 900)),
+        letterSpacing = if (letterSpacing == 0f) this.letterSpacing else letterSpacing.em,
     )
     return Typography(
         displayLarge = base.displayLarge.f(),

@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -32,6 +33,12 @@ data class AppSettings(
     val pinnedAlbums: Set<String> = emptySet(),
     /** Corner roundness: 0 = square, 1 = default, 2 = extra round. */
     val cornerScale: Float = 1f,
+    /** Text size multiplier (1 = default). */
+    val textScale: Float = 1f,
+    /** Added to every text style's weight, in steps of 100 (e.g. -100 = a notch lighter). */
+    val weightDelta: Int = 0,
+    /** Extra space between characters, in em (0 = the font's own spacing). */
+    val letterSpacing: Float = 0f,
 )
 
 private val Context.dataStore by preferencesDataStore("settings")
@@ -51,6 +58,9 @@ class SettingsStore(context: Context, private val scope: CoroutineScope) {
         val exclude = stringSetPreferencesKey("folders_exclude")
         val pinned = stringSetPreferencesKey("pinned_albums")
         val corners = floatPreferencesKey("corner_scale")
+        val textScale = floatPreferencesKey("text_scale")
+        val weightDelta = intPreferencesKey("weight_delta")
+        val letterSpacing = floatPreferencesKey("letter_spacing")
     }
 
     /** Null until the first read finishes, so the UI can avoid a theme flash. */
@@ -73,6 +83,9 @@ class SettingsStore(context: Context, private val scope: CoroutineScope) {
         folders = FolderFilter(this[Keys.include].orEmpty(), this[Keys.exclude].orEmpty()),
         pinnedAlbums = this[Keys.pinned].orEmpty(),
         cornerScale = this[Keys.corners] ?: 1f,
+        textScale = this[Keys.textScale] ?: 1f,
+        weightDelta = this[Keys.weightDelta] ?: 0,
+        letterSpacing = this[Keys.letterSpacing] ?: 0f,
     )
 
     private fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
@@ -87,6 +100,10 @@ class SettingsStore(context: Context, private val scope: CoroutineScope) {
     fun setAlbumSort(sort: AlbumSort) = edit { it[Keys.albumSort] = sort.name }
     fun setArtistSort(sort: ArtistSort) = edit { it[Keys.artistSort] = sort.name }
     fun setCornerScale(scale: Float) = edit { it[Keys.corners] = scale.coerceIn(0f, 2f) }
+    fun setTextScale(scale: Float) = edit { it[Keys.textScale] = scale.coerceIn(0.8f, 1.3f) }
+    fun setWeightDelta(delta: Int) = edit { it[Keys.weightDelta] = delta.coerceIn(-300, 300) }
+    fun setLetterSpacing(em: Float) = edit { it[Keys.letterSpacing] = em.coerceIn(-0.05f, 0.15f) }
+    fun resetTextStyle() = edit { it.remove(Keys.textScale); it.remove(Keys.weightDelta); it.remove(Keys.letterSpacing) }
 
     fun setFolderRule(path: String, rule: FolderRule) = edit {
         val include = it[Keys.include].orEmpty() - path

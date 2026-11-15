@@ -2,6 +2,11 @@
 
 package dev.savar.aria.ui.screens
 
+import kotlin.math.roundToInt
+import dev.savar.aria.ui.theme.pill
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Slider
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -82,6 +87,7 @@ fun FontsScreen(container: AppContainer, onBack: () -> Unit) {
     ) { padding ->
         Column(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) {
             FontPreview(current)
+            settings?.let { TextStyleControls(it, container) }
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
@@ -128,6 +134,53 @@ fun FontsScreen(container: AppContainer, onBack: () -> Unit) {
             }
         }
     }
+}
+
+/** Size, weight and letter spacing: live while dragging, saved when you let go. */
+@Composable
+private fun TextStyleControls(s: dev.savar.aria.data.AppSettings, container: AppContainer) {
+    val store = container.settings
+    var size by remember(s.textScale) { mutableFloatStateOf(s.textScale) }
+    var weight by remember(s.weightDelta) { mutableFloatStateOf(s.weightDelta.toFloat()) }
+    var spacing by remember(s.letterSpacing) { mutableFloatStateOf(s.letterSpacing) }
+    val changed = s.textScale != 1f || s.weightDelta != 0 || s.letterSpacing != 0f
+    Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 8.dp)) {
+        StyleSlider("Size", "${(size * 100).roundToInt()}%", size, 0.8f..1.3f, steps = 9, onChange = { size = it }) {
+            store.setTextScale(size)
+        }
+        StyleSlider("Weight", weightLabel(weight.roundToInt()), weight, -300f..300f, steps = 5, onChange = { weight = it }) {
+            store.setWeightDelta(weight.roundToInt())
+        }
+        StyleSlider("Letter spacing", if (spacing == 0f) "Default" else "%+.2f em".format(spacing), spacing, -0.05f..0.15f, steps = 7, onChange = { spacing = it }) {
+            store.setLetterSpacing(spacing)
+        }
+        if (changed) {
+            TextButton(shape = pill(), onClick = store::resetTextStyle, modifier = Modifier.align(Alignment.End)) { Text("Reset size, weight & spacing") }
+        }
+    }
+}
+
+private fun weightLabel(delta: Int) = when {
+    delta == 0 -> "Default"
+    delta < 0 -> "Lighter ${-delta / 100}"
+    else -> "Bolder ${delta / 100}"
+}
+
+@Composable
+private fun StyleSlider(
+    label: String,
+    value: String,
+    current: Float,
+    range: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    onChange: (Float) -> Unit,
+    onDone: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Slider(value = current, onValueChange = onChange, onValueChangeFinished = onDone, valueRange = range, steps = steps)
 }
 
 /** What the app looks like in the chosen font: uses the live theme, so it updates as you pick. */

@@ -74,7 +74,9 @@ fun AriaTheme(settings: AppSettings, content: @Composable () -> Unit) {
         else -> AriaLight
     }
     val scheme = if (dark && settings.amoled) base.amoled() else base
-    val typography = remember(settings.font) { typographyFor(settings.font) }
+    val typography = remember(settings.font, settings.textScale, settings.weightDelta, settings.letterSpacing) {
+        typographyFor(settings.font, settings.textScale, settings.weightDelta, settings.letterSpacing)
+    }
 
     val view = LocalView.current
     if (!view.isInEditMode) {
