@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Outline for clipping the cover (clipToOutline). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#FF2A2A33" />
+    <corners android:radius="18dp" />
+</shape>

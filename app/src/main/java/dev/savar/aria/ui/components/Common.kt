@@ -1,5 +1,7 @@
 package dev.savar.aria.ui.components
 
+import androidx.compose.runtime.collectAsState
+import dev.savar.aria.data.ArtistPhotos
 import coil3.request.crossfade
 import androidx.compose.runtime.produceState
 import androidx.compose.foundation.shape.CircleShape
@@ -172,8 +174,10 @@ fun ArtistImage(
 ) {
     val context = LocalContext.current
     val photos = remember { (context.applicationContext as AriaApp).container.artistPhotos }
-    val photo by produceState(photos.cached(artist.name), artist.name) {
-        if (value == null) value = photos.get(artist.name)
+    val hints = remember(artist) { artist.photoHints() }
+    val version by photos.changes.collectAsState()
+    val photo by produceState(photos.cached(artist.name), artist.name, version) {
+        value = photos.cached(artist.name) ?: photos.get(artist.name, hints)
     }
     Box(modifier.clip(CircleShape)) {
         ArtImage(
@@ -194,3 +198,10 @@ fun ArtistImage(
         }
     }
 }
+
+/** Your own albums and songs by this artist: lets the photo lookup find the right person. */
+fun Artist.photoHints() = ArtistPhotos.Hints(
+    albums = songs.map { it.album }.filter { it.isNotBlank() && !it.contains("unknown", ignoreCase = true) }
+        .groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.map { it.key }.take(2),
+    titles = songs.map { it.title }.filter { it.isNotBlank() }.take(1),
+)

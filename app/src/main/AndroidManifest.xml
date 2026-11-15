@@ -80,6 +80,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".widget.WidgetActionReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".widget.AriaWidgetReceiver"
             android:exported="true"
             android:label="@string/app_name">

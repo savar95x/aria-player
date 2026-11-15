@@ -591,6 +591,8 @@ fun ArtistScreen(
 ) {
     val artists by container.library.artists.collectAsStateWithLifecycle()
     val artist = artists.firstOrNull { it.name == name }
+    var viewingPhoto by remember { mutableStateOf(false) }
+    if (viewingPhoto && artist != null) ArtistPhotoViewer(artist, container.artistPhotos) { viewingPhoto = false }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = { BackTopBar(onBack = onBack) }) { padding ->
         if (artist == null) return@Scaffold
         LazyColumn(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize(), contentPadding = listBottomPadding()) {
@@ -598,7 +600,7 @@ fun ArtistScreen(
                 Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     ArtistImage(
                         artist,
-                        Modifier.sharedArt("artist-${artist.name}").size(168.dp),
+                        Modifier.sharedArt("artist-${artist.name}").size(168.dp).clip(CircleShape).clickable { viewingPhoto = true },
                         sizePx = 480,
                         placeholderPx = 160,
                     )

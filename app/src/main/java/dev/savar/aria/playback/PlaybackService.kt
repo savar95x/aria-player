@@ -151,6 +151,9 @@ class PlaybackService : MediaSessionService() {
         super.onDestroy()
     }
 
+    /** Widget buttons, when the service is already running. */
+    fun perform(action: RemoteAction) = handle(action)
+
     private fun handle(action: RemoteAction) {
         scope.launch {
             restoreJob?.join()

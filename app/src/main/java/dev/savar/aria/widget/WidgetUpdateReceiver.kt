@@ -11,8 +11,8 @@ import dev.savar.aria.data.titleText
 import kotlinx.coroutines.launch
 
 /**
- * Bridge from the player process to the widget, which lives in the UI process
- * (Glance needs WorkManager, which only runs in the main process).
+ * Player -> widget. A broadcast (rather than a direct call) so the player never waits on
+ * artwork decoding, and so this keeps working if the player ever moves to its own process.
  */
 class WidgetUpdateReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
