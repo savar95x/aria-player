@@ -18,10 +18,10 @@
         android:id="@+id/scrim"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#66000000"
+        android:background="#61000000"
         android:visibility="gone" />
 
-    <!-- 4x2: cover on the left, titles and controls beside it. -->
+    <!-- 4x2: square cover on the left (sized in code to the widget's height), titles and controls beside it. -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -31,13 +31,11 @@
 
         <ImageView
             android:id="@+id/art"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:adjustViewBounds="true"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
             android:background="@drawable/widget_art_shape"
             android:clipToOutline="true"
-            android:maxWidth="150dp"
-            android:scaleType="fitCenter"
+            android:scaleType="centerCrop"
             android:src="@drawable/widget_art_placeholder" />
 
         <LinearLayout
@@ -67,10 +65,14 @@
                 android:text="Tap to open"
                 android:textColor="#B8FFFFFF"
                 android:textSize="13sp" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="10dp" />
+
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -80,21 +82,14 @@
                     android:layout_height="40dp"
                     android:contentDescription="Previous"
                     android:padding="7dp"
-                    android:src="@drawable/ic_previous"
-                    android:tint="#FFFFFFFF" />
+                    android:src="@drawable/ic_previous" />
 
                 <FrameLayout
                     android:id="@+id/play"
                     android:layout_width="60dp"
                     android:layout_height="44dp"
-                    android:layout_marginHorizontal="6dp">
-
-                    <ImageView
-                        android:id="@+id/play_bg"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:scaleType="fitXY"
-                        android:src="@drawable/widget_pill" />
+                    android:layout_marginHorizontal="6dp"
+                    android:background="@drawable/widget_pill">
 
                     <ImageView
                         android:id="@+id/play_icon"
@@ -102,7 +97,7 @@
                         android:layout_height="26dp"
                         android:layout_gravity="center"
                         android:src="@drawable/ic_play"
-                        android:tint="#FF101014" />
+                        android:tint="#FF000000" />
                 </FrameLayout>
 
                 <ImageView
@@ -111,8 +106,7 @@
                     android:layout_height="40dp"
                     android:contentDescription="Next"
                     android:padding="7dp"
-                    android:src="@drawable/ic_next"
-                    android:tint="#FFFFFFFF" />
+                    android:src="@drawable/ic_next" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

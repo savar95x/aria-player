@@ -18,7 +18,7 @@ Every push to `main` publishes a numbered release with its changes listed. Build
 
 - **Material 3 + AMOLED.** Wallpaper colours (Material You), pure black dark theme, light/dark/system, adjustable corner roundness.
 - **Any Google Font.** Pick from a shortlist or type any family name from fonts.google.com.
-- **Home-screen widget.** Blurred-artwork backdrop, play button tinted from the cover. Resizes from 2×2 (art + play) to 4×2 and 4×4 (art, titles, controls). Plain RemoteViews pushed straight from the player, so it's light and works after a reboot without opening the app.
+- **Home-screen widget.** Blurred-artwork backdrop. Resizes from 2×2 (art + play) to 4×2 and 4×4 (art, titles, controls). Plain RemoteViews pushed straight from the player, so it's light and works after a reboot without opening the app.
 - **Sleep timer.** Fades out, or waits for the current song to finish. Extend by +10 min.
 - **Folder include/exclude.** Whitelist and blacklist together; the most specific rule wins.
 - **Fix tags online.** Search a song, pick the match, and Aria writes title/artist/album/year/genre/track and 1200px cover art into the file.

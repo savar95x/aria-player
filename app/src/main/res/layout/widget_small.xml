@@ -19,14 +19,8 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_gravity="bottom|end"
-        android:layout_margin="10dp">
-
-        <ImageView
-            android:id="@+id/play_bg"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="fitXY"
-            android:src="@drawable/widget_pill" />
+        android:layout_margin="10dp"
+        android:background="@drawable/widget_pill">
 
         <ImageView
             android:id="@+id/play_icon"
@@ -34,6 +28,6 @@
             android:layout_height="26dp"
             android:layout_gravity="center"
             android:src="@drawable/ic_play"
-            android:tint="#FF101014" />
+            android:tint="#FF000000" />
     </FrameLayout>
 </FrameLayout>

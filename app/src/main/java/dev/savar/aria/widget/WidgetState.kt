@@ -2,8 +2,6 @@ package dev.savar.aria.widget
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Color
-import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.scale
 import dev.savar.aria.container
 import dev.savar.aria.data.EmbeddedArt
@@ -25,8 +23,6 @@ object WidgetState {
         val isPlaying: Boolean = false,
         val art: Bitmap? = null,
         val backdrop: Bitmap? = null,
-        /** Play-button colour: a light tint of the cover's main colour. */
-        val accent: Int = Color.WHITE,
     )
 
     private val _data = MutableStateFlow<Data?>(null)
@@ -77,8 +73,7 @@ object WidgetState {
         val raw = id?.let { runCatching { EmbeddedArt.bitmap(context, songUri(it), 480) }.getOrNull() }
             ?: return@withContext Data()
         val art = squareCrop(raw, 400)
-        val tiny = art.scale(12, 12, filter = true)
-        Data(art = art, backdrop = blur(tiny), accent = accentOf(tiny))
+        Data(art = art, backdrop = blur(art.scale(12, 12, filter = true)))
     }
 
     /** Centre square, so the cover keeps its shape in every widget size. */
@@ -91,18 +86,4 @@ object WidgetState {
 
     /** Cheap, smooth blur: shrink hard, then let bilinear filtering spread the colour back out. */
     private fun blur(tiny: Bitmap): Bitmap = tiny.scale(48, 48, filter = true).scale(160, 160, filter = true)
-
-    /** Average colour of the cover, lifted into a soft pastel that dark icons read well on. */
-    private fun accentOf(tiny: Bitmap): Int {
-        var r = 0L; var g = 0L; var b = 0L
-        val px = IntArray(tiny.width * tiny.height)
-        tiny.getPixels(px, 0, tiny.width, 0, 0, tiny.width, tiny.height)
-        px.forEach { r += Color.red(it); g += Color.green(it); b += Color.blue(it) }
-        val n = px.size.coerceAtLeast(1)
-        val hsl = FloatArray(3)
-        ColorUtils.RGBToHSL((r / n).toInt(), (g / n).toInt(), (b / n).toInt(), hsl)
-        hsl[1] = (hsl[1] * 1.4f).coerceIn(0f, 0.55f)
-        hsl[2] = 0.86f
-        return ColorUtils.HSLToColor(hsl)
-    }
 }

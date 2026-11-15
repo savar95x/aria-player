@@ -135,8 +135,9 @@ the next step is an in-window sheet instead of `ModalBottomSheet` (which opens a
 and its Room database. That broke twice (start-up crash under AGP 9 R8, then the widget silently
 stopped working) and Glance adds nothing we need. Keep the receiver class name
 `dev.savar.aria.widget.AriaWidgetReceiver`, or widgets already on home screens vanish.
-`RemoteViews(Map<SizeF, RemoteViews>)` picks the layout by size. Bitmaps go over binder, so keep
-the cover ≤ 400px. The play button is tinted from the cover (`WidgetState.accentOf`).
+It reads each widget's real sizes (`OPTION_APPWIDGET_SIZES`) and builds one layout per size, setting
+the 4x2 cover's size in code (`setViewLayoutWidth/Height`). Don't rely on `adjustViewBounds`: the first
+RemoteViews version did and letterboxed the cover. Bitmaps go over binder, so keep the cover ≤ 400px.
 
 **Artist photos.** Automatic pick = Deezer search with `artist:"X" album:"<one of your albums>"`, then
 the most-followed exact-name match. Exact name or nothing. Deezer's grey placeholder (empty hash or
@@ -161,8 +162,13 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
 - Pinned albums (long-press an album) show first.
 - Folder include **and** exclude rules together; the most specific wins.
 - Album/artist sorting exists like songs; sorts persist.
-- App icon: lowercase "a" whose bowl holds a play button, cream on deep plum
-  (`res/drawable/ic_launcher_*`). Has a monochrome layer for themed icons.
+- App icon: minimal with character. A heavy rounded lowercase "a" in cream (#EFEBDF) with a coral
+  (#F49070) dot in its bowl, like a record label, on near-black (#141615). It's deliberately a sibling
+  of the owner's other app icon (Minutia: cream "m" + coral colon). Has a monochrome layer.
+  A purple-gradient "a with a play button" was rejected as ugly.
+- Widget look (the owner calls it perfect, so don't restyle without asking): #16161C body, 28dp corners,
+  blurred cover backdrop + 38% black scrim, square cover with 18dp corners (4x2) / 20dp (4x4),
+  white 16sp bold title, 72%-white 13sp artist, white prev/next, **white** pill play button with a black icon.
 
 ## Tried and reverted
 

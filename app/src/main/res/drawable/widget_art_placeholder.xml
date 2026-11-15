@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Square "no artwork" tile; has an intrinsic size so adjustViewBounds keeps it square. -->
+<!-- "No artwork": a quiet note on the tile colour. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape>
             <solid android:color="#FF2A2A33" />
-            <size android:width="96dp" android:height="96dp" />
         </shape>
     </item>
-    <item android:drawable="@drawable/ic_note" android:gravity="center" android:width="36dp" android:height="36dp" />
+    <item android:drawable="@drawable/ic_note_dim" android:gravity="center" android:width="36dp" android:height="36dp" />
 </layer-list>
