@@ -272,6 +272,12 @@ fun NowPlayingScreen(
         if (showLyrics && lyrics == LyricsState.Loading) lyrics = container.lyrics.load(lyricsRequest)
     }
     val scope = rememberCoroutineScope()
+    // Tapping the artist line opens that artist (same as "Go to artist" in the menu).
+    // Links without an artist tag stay plain text.
+    val artistName = meta.artist?.toString()?.takeIf { it.isNotBlank() }
+    val artistShape = rounded(6.dp)
+    val openArtist = if (artistName == null) Modifier else
+        Modifier.clip(artistShape).clickable { onOpenArtist(artistName) }
 
     Box(
         Modifier
@@ -344,6 +350,7 @@ fun NowPlayingScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                                modifier = openArtist,
                             )
                         }
                     }
@@ -392,7 +399,7 @@ fun NowPlayingScreen(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    modifier = Modifier.basicMarquee(),
+                    modifier = Modifier.then(openArtist).basicMarquee(),
                 )
             }
             }
