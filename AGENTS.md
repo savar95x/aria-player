@@ -162,9 +162,9 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
 - Pinned albums (long-press an album) show first.
 - Folder include **and** exclude rules together; the most specific wins.
 - Album/artist sorting exists like songs; sorts persist.
-- App icon: a minimal record (cream rim + two glints, coral label, ink background). The owner picked
-  this direction from six sketches after rejecting four letter-"a" designs. Spec and history in
-  `docs/icon/README.md`. Don't go back to letterforms.
+- App icon: **Wave**, the owner's own design: four rounded bars (third one coral) on graphite #1C1C1E.
+  Spec in `docs/icon/README.md`. Don't redesign it; it ended a long run of rejected icons.
+- Now-playing row in lists: tinted secondaryContainer pill + equaliser mark (colour alone was too dim).
 - Widget look (the owner calls it perfect, so don't restyle without asking): #16161C body, 28dp corners,
   blurred cover backdrop + 38% black scrim, square cover with 18dp corners (4x2) / 20dp (4x4),
   white 14sp medium (not bold) title, 72%-white 12sp artist, white prev/next, **white** pill play button with a black icon.

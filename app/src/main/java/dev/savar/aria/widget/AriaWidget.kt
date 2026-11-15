@@ -93,10 +93,17 @@ object AriaWidget {
             if (layout == R.layout.widget_small) return@apply
 
             if (layout == R.layout.widget_wide) {
-                // Square cover filling the height (minus padding), capped like before.
-                val art = (size.height - 28f).coerceIn(48f, 140f)
+                // Square cover filling the height (minus padding), capped like before, but never so
+                // wide that the controls (prev 40 + play 60 + next 40 + gaps = 152dp) run off the edge.
+                // On the narrowest sizes "previous" steps aside so the cover can stay a decent size.
+                val fullControls = 152f
+                val room = size.width - 28f - 14f // widget padding + gap between cover and text
+                val dropPrev = room - fullControls < 64f
+                val controls = if (dropPrev) 106f else fullControls
+                val art = minOf(size.height - 28f, 140f, room - controls).coerceAtLeast(40f)
                 setViewLayoutWidth(R.id.art, art, TypedValue.COMPLEX_UNIT_DIP)
                 setViewLayoutHeight(R.id.art, art, TypedValue.COMPLEX_UNIT_DIP)
+                setViewVisibility(R.id.prev, if (dropPrev) View.GONE else View.VISIBLE)
             }
             val backdrop = data.backdrop
             setViewVisibility(R.id.backdrop, if (backdrop != null) View.VISIBLE else View.GONE)

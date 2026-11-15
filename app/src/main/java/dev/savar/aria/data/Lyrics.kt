@@ -50,9 +50,21 @@ data class LyricsRequest(
 class LyricsRepository(private val context: Context) {
     private val dir = File(context.filesDir, "lyrics").apply { mkdirs() }
 
+    init {
+        // v2 prefers synced lyrics over plain ones from the file: re-check songs cached as plain once.
+        val marker = File(dir, ".v2")
+        if (!marker.exists()) {
+            dir.listFiles { f -> f.extension == "txt" }.orEmpty().forEach { it.delete() }
+            marker.writeText("")
+        }
+    }
+
     suspend fun load(req: LyricsRequest): LyricsState = withContext(Dispatchers.IO) {
         cached(req.key)?.let { return@withContext LyricsState.Found(it) }
-        embedded(req.path)?.let { return@withContext LyricsState.Found(it.also { l -> save(req.key, l) }) }
+        // Synced lyrics in the file win outright. Plain ones (often pasted from Genius, with
+        // "Read More" junk) are only a fallback: try LRCLIB for synced first.
+        val inFile = embedded(req.path)
+        if (inFile != null && inFile !is Lyrics.Plain) return@withContext LyricsState.Found(inFile.also { save(req.key, it) })
         val light = stripPrefixes(req.title, req.artist)
         val title = cleanTitle(req.title, req.artist)
         val artist = primaryArtist(req.artist)
@@ -61,14 +73,20 @@ class LyricsRepository(private val context: Context) {
             val found = fetchExact(light, artist, req.album, req.durationMs)
                 ?: (if (title != light) fetchExact(title, artist, req.album, req.durationMs) else null)
                 ?: fetchSearch(title, artist, req.durationMs)
-            if (found != null) {
-                save(req.key, found)
-                LyricsState.Found(found)
+            val best = when {
+                found != null && found !is Lyrics.Plain -> found
+                inFile != null -> inFile
+                else -> found
+            }
+            if (best != null) {
+                save(req.key, best)
+                LyricsState.Found(best)
             } else {
                 LyricsState.NotFound("$title $artist".trim())
             }
         } catch (e: Exception) {
-            LyricsState.Failed("$title $artist".trim())
+            // Offline: the file's own lyrics are better than nothing (not cached, so we retry online later).
+            if (inFile != null) LyricsState.Found(inFile) else LyricsState.Failed("$title $artist".trim())
         }
     }
 

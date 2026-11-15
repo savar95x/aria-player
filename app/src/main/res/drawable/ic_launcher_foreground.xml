@@ -1,31 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Aria's mark: a record. Cream rim, two glints where light catches the vinyl, coral label. Cream + coral on ink, a sibling of the Minutia icon. Spec: docs/icon/README.md -->
+<!-- Aria's mark: Wave. Four rounded bars, the third in coral. Owner's own design; spec in docs/icon/README.md -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:pathData="M31.00,54a23,23 0 1,0 46.00,0a23,23 0 1,0 -46.00,0"
-        android:strokeColor="#FFEFEBDF"
-        android:strokeWidth="2.2" />
-    <path
-        android:pathData="M38.84,45.25A17.5,17.5 0 0,1 50.96,36.77"
-        android:strokeAlpha="0.8"
-        android:strokeColor="#FFEFEBDF"
+        android:pathData="M36.9,46.6L36.9,61.4"
+        android:strokeColor="#FFEEE7DB"
         android:strokeLineCap="round"
-        android:strokeWidth="2" />
+        android:strokeWidth="8.2" />
     <path
-        android:pathData="M69.16,62.75A17.5,17.5 0 0,1 57.04,71.23"
-        android:strokeAlpha="0.8"
-        android:strokeColor="#FFEFEBDF"
+        android:pathData="M48.3,37.5L48.3,70.5"
+        android:strokeColor="#FFEEE7DB"
         android:strokeLineCap="round"
-        android:strokeWidth="2" />
+        android:strokeWidth="8.2" />
     <path
-        android:fillColor="#FFF49070"
-        android:fillType="evenOdd"
-        android:pathData="M45.50,54a8.5,8.5 0 1,0 17.00,0a8.5,8.5 0 1,0 -17.00,0" />
+        android:pathData="M59.7,42.05L59.7,65.95"
+        android:strokeColor="#FFDD9A7F"
+        android:strokeLineCap="round"
+        android:strokeWidth="8.2" />
     <path
-        android:fillColor="#FF141615"
-        android:pathData="M52.20,54a1.8,1.8 0 1,0 3.60,0a1.8,1.8 0 1,0 -3.60,0" />
+        android:pathData="M71.1,50.1L71.1,57.9"
+        android:strokeColor="#FFEEE7DB"
+        android:strokeLineCap="round"
+        android:strokeWidth="8.2" />
 </vector>

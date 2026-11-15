@@ -1,5 +1,7 @@
 package dev.savar.aria.ui.components
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.runtime.collectAsState
 import dev.savar.aria.data.ArtistPhotos
 import coil3.request.crossfade
@@ -106,28 +108,46 @@ fun SongRow(
     modifier: Modifier = Modifier,
     leading: (@Composable () -> Unit)? = null,
 ) {
+    // The playing song sits in a tinted pill with an equaliser mark, like Google's own apps:
+    // colour alone (our primary is a soft sage) was too easy to miss.
+    val rowShape = rounded(18.dp)
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .padding(horizontal = 8.dp)
+            .clip(rowShape)
+            .then(if (isCurrent) Modifier.background(MaterialTheme.colorScheme.secondaryContainer) else Modifier)
             .clickable(onClick = onClick)
-            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            .padding(start = 8.dp, end = 0.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (leading != null) leading() else ArtImage(song.art.copy(sizePx = 160), Modifier.size(48.dp))
+        when {
+            isCurrent && leading != null -> Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.GraphicEq, "Playing", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+            }
+            leading != null -> leading()
+            else -> Box(contentAlignment = Alignment.Center) {
+                ArtImage(song.art.copy(sizePx = 160), Modifier.size(48.dp))
+                if (isCurrent) Box(
+                    Modifier.size(48.dp).clip(rounded(12.dp)).background(Color.Black.copy(alpha = 0.45f)),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.GraphicEq, "Playing", Modifier.size(24.dp), tint = Color.White) }
+            }
+        }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 song.title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
-                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                color = if (isCurrent) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 "${song.artist} · ${formatDuration(song.durationMs)}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (isCurrent) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

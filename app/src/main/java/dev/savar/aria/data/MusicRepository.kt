@@ -41,14 +41,19 @@ class MusicRepository(
     }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Eagerly, null)
 
     val albums: StateFlow<List<Album>> = songs.map { list ->
+        val usedIds = HashSet<Long>()
         list.orEmpty()
             .groupBy { albumKey(it) }
-            .map { (_, tracks) ->
-                val sorted = tracks.sortedWith(compareBy({ it.track }, { it.title.lowercase() }))
+            .map { (key, tracks) ->
+                val sorted = tracks.sortedWith(trackOrder)
+                // MediaStore can split one album into several ids (files in different folders) or
+                // put two albums under one id; the merged album keeps its most common id unless
+                // another album already took it (ids must be unique: they key lists and routes).
+                val common = tracks.groupingBy { it.albumId }.eachCount().maxBy { it.value }.key
+                var id = if (usedIds.add(common)) common else -(key.hashCode().toLong() and 0x7fffffffL) - 1
+                while (!usedIds.add(id) && id != common) id--
                 Album(
-                    // MediaStore can split one album into several ids (e.g. files in different
-                    // folders); the merged album keeps the id most of its songs have.
-                    id = tracks.groupingBy { it.albumId }.eachCount().maxBy { it.value }.key,
+                    id = id,
                     title = sorted.first().album,
                     artist = sorted.firstNotNullOfOrNull { it.albumArtist }
                         ?: sorted.groupingBy { it.artist }.eachCount().maxBy { it.value }.key,
@@ -147,6 +152,12 @@ class MusicRepository(
     suspend fun songsByIds(ids: List<Long>): List<Song> = MediaStoreQuery.songsByIds(context, ids)
 
     private companion object {
+        /**
+         * Album order: disc, then track. MediaStore packs both into one number (disc × 1000 + track),
+         * so a file with no disc tag would otherwise sort before every track on disc 1.
+         * No disc counts as disc 1; no track number sorts first.
+         */
+        val trackOrder = compareBy<Song>({ (it.track / 1000).coerceAtLeast(1) }, { it.track % 1000 }, { it.title.lowercase() })
         val leadArtistSplit = Regex("\\s+(feat\\.?|ft\\.?|featuring|x)\\s+", RegexOption.IGNORE_CASE)
         val joinedCredit = Regex("""\s*(?:,|&|\bx\b|\bfeat\.?|\bft\.?|\bfeaturing\b)\s*""", RegexOption.IGNORE_CASE)
     }
