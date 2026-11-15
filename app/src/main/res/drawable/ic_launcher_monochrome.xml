@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon version: one colour, the launcher tints it.
+     Glyph spans 34..74 on the 108dp canvas, inside the 66dp safe circle. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M37.8,54a16.2,16.2 0 1,0 32.4,0a16.2,16.2 0 1,0 -32.4,0"
+        android:strokeWidth="7.6"
+        android:strokeColor="#FFFFFFFF" />
+    <path
+        android:pathData="M70.2,37.8L70.2,70.2"
+        android:strokeWidth="7.6"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M49.46,46.22L62.86,54L49.46,61.78Z"
+        android:strokeWidth="2.2"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineJoin="round" />
+</vector>
