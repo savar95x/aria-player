@@ -1,5 +1,6 @@
 package dev.savar.aria.ui
 
+import androidx.compose.ui.input.pointer.PointerEventPass
 import dev.savar.aria.ui.theme.cornerDp
 import android.Manifest
 import android.content.Intent
@@ -364,7 +365,22 @@ private fun NavGraphBuilder.screen(
     arguments: List<NamedNavArgument> = emptyList(),
     content: @Composable (NavBackStackEntry) -> Unit,
 ) = composable(route, arguments) { entry ->
-    CompositionLocalProvider(LocalAnimatedScope provides this) { content(entry) }
+    CompositionLocalProvider(LocalAnimatedScope provides this) {
+        Box(Modifier.fillMaxSize()) {
+            content(entry)
+            // While this page is sliding in or out, swallow every touch: tapping into a page that's
+            // still animating stacked transitions and broke the back-swipe preview.
+            if (transition.isRunning) {
+                Box(
+                    Modifier.matchParentSize().pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                        }
+                    },
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

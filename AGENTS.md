@@ -125,6 +125,10 @@ shape outside first.
 **Shared elements.** Keys: `now-playing-art`, `now-playing-art-mode` (big ↔ lyrics header),
 `album-<id>`, `artist-<name>`. `sharedElement` remeasures content to the animated bounds.
 
+**Navigation input.** Every NavHost page swallows touches while its enter/exit transition runs
+(overlay in `screen()` in AriaRoot), and `go()` only navigates from a RESUMED page. Tapping into a
+page mid-transition stacked animations and broke the predictive back preview.
+
 **Seek bar.** Holds at 0 until the new song's duration is known (otherwise it races to the end on skip).
 
 **Queue sheet.** Fixed height, list composed one frame after the sheet starts, art pre-decoded while
