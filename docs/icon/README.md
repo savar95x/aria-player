@@ -9,7 +9,7 @@ Same system as the Minutia icon, so the two apps read as a set.
 said plainly: a short, finished phrase, like the song it's named after.
 
 ## Typeface
-- **Inter Display ExtraBold** (800), lowercase `a` and `.` (Inter's round dot). SIL OFL.
+- **Inter Display SemiBold** (600), lowercase `a` and `.` (Inter's round dot). SIL OFL.
 - Real glyph outlines as-is: no custom letterforms, no rounded-stroke shapes.
 
 ## Colour
@@ -29,7 +29,7 @@ Monochrome layer = the same two shapes in one colour (themed icons).
 Path data is **generated, never hand-edited**:
 ```bash
 pip install fonttools cairosvg pillow
-python3 docs/icon/make.py --font /usr/share/fonts/opentype/inter/InterDisplay-ExtraBold.otf --write
+python3 docs/icon/make.py --font /usr/share/fonts/opentype/inter/InterDisplay-SemiBold.otf --write
 ```
 Writes `drawable/ic_launcher_foreground.xml`, `ic_launcher_monochrome.xml`, `docs/icon/icon.png`,
 `docs/icon.png`, and `icon_preview.png` (circle, squircle, themed, 48 px).
@@ -44,4 +44,5 @@ Writes `drawable/ic_launcher_foreground.xml`, `ic_launcher_monochrome.xml`, `doc
 | White equaliser bars on black | Generic |
 | Cream "a" with play button in the bowl, purple gradient | Disliked |
 | Rounded-stroke "a" with coral dot in the bowl | Disliked |
-| **Inter Display ExtraBold "a.", cream + coral on ink** | **Current** |
+| Inter Display ExtraBold "a." | Too bold (also true of the rounded "a") |
+| **Inter Display SemiBold "a.", cream + coral on ink** | **Current** |

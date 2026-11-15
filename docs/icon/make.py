@@ -5,7 +5,7 @@ Same system as the Minutia icon ("m:"): one cream letter + one coral round accen
 Aria's mark is "a." — the letter plus a round period.
 
   pip install fonttools cairosvg pillow
-  python3 docs/icon/make.py --font /usr/share/fonts/opentype/inter/InterDisplay-ExtraBold.otf --write
+  python3 docs/icon/make.py --font /usr/share/fonts/opentype/inter/InterDisplay-SemiBold.otf --write
 """
 import argparse, io, os
 from fontTools.ttLib import TTFont
