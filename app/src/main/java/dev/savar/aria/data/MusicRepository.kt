@@ -102,6 +102,21 @@ class MusicRepository(
             .sortedBy { it.name.lowercase() }
     }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Eagerly, emptyList())
 
+    // The home tabs' lists, sorted in the background and kept ready. Sorting them inside the screen
+    // meant re-sorting the whole library on the main thread every time you came back to home
+    // (the screen is rebuilt after an album/artist page), which froze the back animation.
+    val sortedSongs: StateFlow<List<Song>> = combine(songs, settings.settings) { list, s ->
+        list.orEmpty().sortSongs(s?.songSort ?: SongSort.Title)
+    }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    val sortedAlbums: StateFlow<List<Album>> = combine(albums, settings.settings) { list, s ->
+        list.sortAlbums(s?.albumSort ?: AlbumSort.Title)
+    }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    val sortedArtists: StateFlow<List<Artist>> = combine(artists, settings.settings) { list, s ->
+        list.sortArtists(s?.artistSort ?: ArtistSort.Name)
+    }.flowOn(Dispatchers.Default).stateIn(scope, SharingStarted.Eagerly, emptyList())
+
     /**
      * The main artist of a tag. "/" and ";" always separate credits. Commas, "&", "x" and "feat."
      * only do when the first name is itself an artist in your library, so "Simon & Garfunkel" or

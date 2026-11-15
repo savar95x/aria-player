@@ -144,15 +144,13 @@ fun HomeScreen(
     tab: HomeTab,
 ) {
     val songs by container.library.songs.collectAsStateWithLifecycle()
-    val albums by container.library.albums.collectAsStateWithLifecycle()
-    val artists by container.library.artists.collectAsStateWithLifecycle()
     val settings by container.settings.settings.collectAsStateWithLifecycle()
     val sort = settings?.songSort ?: SongSort.Title
-    val sorted = remember(songs, sort) { songs.orEmpty().sortSongs(sort) }
+    val sorted by container.library.sortedSongs.collectAsStateWithLifecycle()
     val albumSort = settings?.albumSort ?: AlbumSort.Title
-    val sortedAlbums = remember(albums, albumSort) { albums.sortAlbums(albumSort) }
+    val sortedAlbums by container.library.sortedAlbums.collectAsStateWithLifecycle()
     val artistSort = settings?.artistSort ?: ArtistSort.Name
-    val sortedArtists = remember(artists, artistSort) { artists.sortArtists(artistSort) }
+    val sortedArtists by container.library.sortedArtists.collectAsStateWithLifecycle()
 
     // Hoisted so each tab keeps its scroll position when you switch away and back.
     val songsList = rememberLazyListState()
