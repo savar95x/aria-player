@@ -80,6 +80,8 @@ fun ArtImage(
                     ImageRequest.Builder(context)
                         .data(art)
                         .placeholderMemoryCacheKey(placeholder?.let { "${it.uri}#${it.version}#${it.sizePx}" })
+                        // Fades in when decoded; images already in memory still appear instantly.
+                        .crossfade(150)
                         .build()
                 },
                 contentDescription = null,
@@ -199,18 +201,27 @@ fun ArtistImage(
     val photo by produceState(photos.cached(artist.name), artist.name, version) {
         value = photos.cached(artist.name) ?: photos.get(artist.name, hints)
     }
+    val file = photo
     Box(modifier.clip(CircleShape)) {
-        ArtImage(
-            if (photo == null) artist.art.copy(sizePx = sizePx) else null,
-            Modifier.fillMaxSize(),
-            CircleShape,
-            placeholder = placeholderPx?.let { artist.art.copy(sizePx = it) },
-        )
-        photo?.let { file ->
+        if (file == null) {
+            ArtImage(
+                artist.art.copy(sizePx = sizePx),
+                Modifier.fillMaxSize(),
+                CircleShape,
+                placeholder = placeholderPx?.let { artist.art.copy(sizePx = it) },
+            )
+        } else {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHighest))
+            // The list-size copy (already decoded for the Artists tab) sits underneath, so a bigger
+            // header never shows an empty frame or the music-note placeholder while it decodes.
             AsyncImage(
-                model = remember(file, sizePx) {
-                    ImageRequest.Builder(context).data(file).size(sizePx).crossfade(true).build()
-                },
+                model = remember(file) { ImageRequest.Builder(context).data(file).size(160).crossfade(true).build() },
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            if (sizePx > 160) AsyncImage(
+                model = remember(file, sizePx) { ImageRequest.Builder(context).data(file).size(sizePx).build() },
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),

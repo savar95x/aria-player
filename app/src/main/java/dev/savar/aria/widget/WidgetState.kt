@@ -39,13 +39,21 @@ object WidgetState {
             return
         }
         val current = _data.value
+        // Restored queue items can arrive before their metadata: never let that blank the titles.
+        var t = title
+        var a = artist
+        if (t.isEmpty() && id != null) {
+            if (current?.songId == id) { t = current.title; a = current.artist }
+            else songFor(app, id)?.let { t = it.title; a = it.artist }
+        }
         val next = if (current != null && current.songId == id) {
-            current.copy(isPlaying = isPlaying, title = title, artist = artist)
+            current.copy(isPlaying = isPlaying, title = t, artist = a)
         } else {
-            artData(app, id).copy(songId = id, title = title, artist = artist, isPlaying = isPlaying)
+            artData(app, id).copy(songId = id, title = t, artist = a, isPlaying = isPlaying)
         }
         if (next != current) {
             _data.value = next
+            snapshot(app, next)
             AriaWidget.render(app, next)
         }
     }
@@ -63,18 +71,36 @@ object WidgetState {
     suspend fun ensureLoaded(context: Context) {
         if (_data.value != null) return
         val app = context.applicationContext
-        val song = withContext(Dispatchers.IO) {
-            val saved = app.container.queueStore.load()
-            val id = saved?.ids?.getOrNull(saved.index)
-            id?.let { MediaStoreQuery.songsByIds(app, listOf(it)).firstOrNull() }
+        // 1. Our own snapshot of the last song shown (survives the app being killed).
+        val prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val lastId = prefs.getLong(KEY_ID, -1L).takeIf { it >= 0 }
+        var title = prefs.getString(KEY_TITLE, null).orEmpty()
+        var artist = prefs.getString(KEY_ARTIST, null).orEmpty()
+        var id = lastId
+        // 2. Otherwise the player's saved queue.
+        if (id == null || title.isEmpty()) {
+            val saved = withContext(Dispatchers.IO) { runCatching { app.container.queueStore.load() }.getOrNull() }
+            val qid = saved?.ids?.getOrNull(saved.index)
+            songFor(app, qid ?: id)?.let { id = it.id; title = it.title; artist = it.artist }
         }
         if (_data.value != null) return
-        _data.value = artData(app, song?.id).copy(
-            songId = song?.id,
-            title = song?.title.orEmpty(),
-            artist = song?.artist.orEmpty(),
-        )
+        _data.value = artData(app, id).copy(songId = id, title = title, artist = artist)
     }
+
+    private suspend fun songFor(context: Context, id: Long?) = id?.let {
+        withContext(Dispatchers.IO) { runCatching { MediaStoreQuery.songsByIds(context, listOf(it)).firstOrNull() }.getOrNull() }
+    }
+
+    private fun snapshot(context: Context, d: Data) {
+        if (d.songId == null || d.title.isEmpty()) return
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putLong(KEY_ID, d.songId).putString(KEY_TITLE, d.title).putString(KEY_ARTIST, d.artist).apply()
+    }
+
+    private const val PREFS = "widget"
+    private const val KEY_ID = "id"
+    private const val KEY_TITLE = "title"
+    private const val KEY_ARTIST = "artist"
 
     private suspend fun artData(context: Context, id: Long?): Data = withContext(Dispatchers.IO) {
         val raw = id?.let { runCatching { EmbeddedArt.bitmap(context, songUri(it), 480) }.getOrNull() }
