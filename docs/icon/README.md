@@ -2,47 +2,29 @@
 
 <p align="center"><img src="icon.png" width="160" alt="Aria icon" /></p>
 
-Same system as the Minutia icon, so the two apps read as a set.
+A record, drawn as little as possible. Same palette as the owner's Minutia icon, so the two read as a set.
 
-## Concept
-**"a."**: the first letter of *Aria* followed by a round coral period. One letter, one dot,
-said plainly: a short, finished phrase, like the song it's named after.
+## Shapes (108 dp adaptive canvas, centred at 54,54)
+| Shape | Spec | Colour |
+|---|---|---|
+| Rim | circle r 23, stroke 2.2 | cream `#EFEBDF` |
+| Glints (light on the vinyl) | two arcs on r 17.5, -150°→-100° and 30°→80°, stroke 2, round caps, 80% alpha | cream |
+| Label | filled circle r 8.5 | coral `#F49070` |
+| Spindle hole | circle r 1.8 | ink |
+| Background | flat | ink `#141615` |
 
-## Typeface
-- **Inter Display SemiBold** (600), lowercase `a` and `.` (Inter's round dot). SIL OFL.
-- Real glyph outlines as-is: no custom letterforms, no rounded-stroke shapes.
-
-## Colour
-| Role | Hex |
-|---|---|
-| Background | `#121614` (ink; `@color/ic_launcher_background`, `drawable/ic_launcher_background.xml`) |
-| Letter "a" | `#F0ECDE` (warm cream) |
-| Period | `#FF8A65` (coral, the only colour) |
-
-Monochrome layer = the same two shapes in one colour (themed icons).
-
-## Geometry (108 dp canvas)
-- Letter ink height **21.8 dp**, the same as Minutia's "m", so both icons sit at the same scale.
-- Gap letter → period **0.07 em**. Mark centred on its ink (x ≈ 38.8 → 69.2, y ≈ 43.1 → 64.9).
-
-## Files
-Path data is **generated, never hand-edited**:
-```bash
-pip install fonttools cairosvg pillow
-python3 docs/icon/make.py --font /usr/share/fonts/opentype/inter/InterDisplay-SemiBold.otf --write
-```
-Writes `drawable/ic_launcher_foreground.xml`, `ic_launcher_monochrome.xml`, `docs/icon/icon.png`,
-`docs/icon.png`, and `icon_preview.png` (circle, squircle, themed, 48 px).
+Monochrome layer: the same shapes in one colour, spindle hole cut out of the label (even-odd).
+Files: `app/src/main/res/drawable/ic_launcher_{background,foreground,monochrome}.xml`, edited by hand.
 
 ## Rules
-- Two shapes, two colours. No gradients, shadows, outlines or extra marks.
-- No soft/bubbly rounded-stroke letterforms. Round dot only.
+- Cream, coral, ink only. No gradients, shadows, extra marks (a tonearm was tried: too fussy).
+- Keep everything inside the 66 dp safe circle (rim outer edge is r 24.1).
 
 ## History
 | Design | Outcome |
 |---|---|
 | White equaliser bars on black | Generic |
 | Cream "a" with play button in the bowl, purple gradient | Disliked |
-| Rounded-stroke "a" with coral dot in the bowl | Disliked |
-| Inter Display ExtraBold "a." | Too bold (also true of the rounded "a") |
-| **Inter Display SemiBold "a.", cream + coral on ink** | **Current** |
+| Rounded-stroke "a" with coral dot in the bowl | Too bold |
+| Inter Display "a." (ExtraBold, then SemiBold) | Disliked |
+| **Record: cream rim + glints, coral label, on ink** | **Current** (owner picked the record direction from six sketches) |
