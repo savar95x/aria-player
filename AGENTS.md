@@ -55,7 +55,7 @@ Toolchain (all deliberately current; see gotchas before changing):
 | Gradle | 9.3.1 |
 | Kotlin | 2.4.10, pinned through `buildscript` classpath in the root `build.gradle.kts` |
 | SDK | compileSdk 37 (required by Compose 1.12), targetSdk 35, minSdk 31 |
-| Compose | BOM 2026.08.00, material3 1.5.0-alpha (Expressive APIs) |
+| Compose | BOM 2026.08.00, material3 1.5.0-alpha (Expressive APIs). No Navigation-Compose (own `Pages`) |
 | Media3 | 1.5.1 (session + exoplayer + hls) |
 | Coil | 3.6.3 with `coil-network-okhttp` |
 
@@ -99,7 +99,7 @@ app/src/main/java/dev/savar/aria/
     WidgetUpdateReceiver  player -> widget broadcast
     WidgetActionReceiver  widget buttons -> player (direct call if running, else MediaController)
   ui/
-    AriaRoot.kt        NavHost, dock (mini player + ShortNavigationBar), now-playing overlay with
+    AriaRoot.kt        Pages (own navigator, see Pages.kt), dock (mini player + ShortNavigationBar), now-playing overlay with
                        predictive back, lyrics state (back closes lyrics first)
     PlayerViewModel    MediaController wrapper; physical shuffle (reorders the real queue around the
                        current item, keeps the original order for un-shuffle)
@@ -125,11 +125,15 @@ shape outside first.
 **Shared elements.** Keys: `now-playing-art`, `now-playing-art-mode` (big ↔ lyrics header),
 `album-<id>`, `artist-<name>`. `sharedElement` remeasures content to the animated bounds.
 
-**Navigation input.** Never block touches waiting for a transition to "finish": a back press while a
-page was still sliding in jammed Navigation's AnimatedContent, the transition never completed, and two
-earlier guards (RESUMED-only taps, a touch-eating overlay while `transition.isRunning`) froze the app.
-Now: each page ignores back while its own transition runs (`BackHandler(enabled = transition.isRunning)`
-in `screen()`), and `go()` drops taps within 400ms of the last destination change (clock-based, can't deadlock).
+**Navigation (ui/Pages.kt).** No Navigation-Compose. NavHost drew the page being *left* on top until
+its exit animation ended, so taps during a back animation hit the leaving page (tapping an artist in the
+list played a song from the artist page sliding away), and back pressed mid-animation jammed it. Our own
+`Pages` back stack + `SeekableTransitionState` + `AnimatedContent`: the destination is always drawn and
+touched on top (`targetContentZIndex` rises every change), page state is kept per visit with
+`SaveableStateHolder`, and predictive back seeks the transition (or just pops on release if an animation
+is running). **Never block or debounce input** waiting for animations: the owner compares against Metro,
+where you can tap through any transition. Earlier guards (RESUMED-only taps, a touch-eating overlay,
+a 400ms debounce) froze the app or swallowed taps.
 
 **Seek bar.** Holds at 0 until the new song's duration is known (otherwise it races to the end on skip).
 

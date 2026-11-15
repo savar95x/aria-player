@@ -1,9 +1,13 @@
 package dev.savar.aria.ui
 
-import androidx.navigation.NavController
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.core.SeekableTransitionState
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.DisposableEffect
-import android.os.SystemClock
 import dev.savar.aria.ui.theme.cornerDp
 import android.Manifest
 import android.content.Intent
@@ -20,9 +24,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.navigation.NamedNavArgument
-import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavGraphBuilder
 import kotlin.coroutines.cancellation.CancellationException
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -84,12 +85,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import dev.savar.aria.AppContainer
 import dev.savar.aria.ui.components.SongActions
 import dev.savar.aria.ui.screens.AlbumScreen
@@ -147,23 +142,21 @@ fun AriaRoot(container: AppContainer) {
 private fun Library(container: AppContainer) {
     val vm: PlayerViewModel = viewModel()
     val player by vm.state.collectAsStateWithLifecycle()
-    val nav = rememberNavController()
-    // Drop a navigation tap that lands within 400ms of the previous page change, so pages can't be
-    // stacked mid-animation. Clock-based on purpose: an earlier version waited for the animation to
-    // report "finished", and when the animation jammed, every tap was dropped forever (app froze).
-    var lastPageChange by remember { mutableLongStateOf(0L) }
-    DisposableEffect(nav) {
-        val listener = NavController.OnDestinationChangedListener { _, _, _ -> lastPageChange = SystemClock.uptimeMillis() }
-        nav.addOnDestinationChangedListener(listener)
-        onDispose { nav.removeOnDestinationChangedListener(listener) }
-    }
-    fun go(route: String) {
-        if (SystemClock.uptimeMillis() - lastPageChange >= 400) nav.navigate(route)
-    }
+    // Our own back stack (see Pages.kt): the destination page is always on top, nothing blocks input.
+    val pages = rememberSaveable(saver = Pages.Saver) { Pages(listOf(Page("home", 0))) }
+    val pageStates = rememberSaveableStateHolder()
+    val pageState = remember { SeekableTransitionState(pages.top) }
+    val pageTransition = rememberTransition(pageState, label = "pages")
+    val pageScope = rememberCoroutineScope()
+    var inPageBack by remember { mutableStateOf(false) }
+    // Each change animates on from wherever the current animation is, so taps never wait.
+    LaunchedEffect(pages.top) { if (!inPageBack) pageState.animateTo(pages.top) }
+    fun go(route: String) = pages.push(route)
+    fun back() { pages.pop()?.let { pageStates.removeState(it.key) } }
     var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
     var showLyrics by rememberSaveable { mutableStateOf(false) }
 
-    val actions = remember(vm, nav) {
+    val actions = remember(vm, pages) {
         SongActions(
             onPlayNext = vm::playNext,
             onAddToQueue = vm::addToQueue,
@@ -173,8 +166,7 @@ private fun Library(container: AppContainer) {
         )
     }
     var tab by rememberSaveable { mutableStateOf(HomeTab.Songs) }
-    val backStack by nav.currentBackStackEntryAsState()
-    val route = backStack?.destination?.route
+    val route = pages.top.route
     // Like Google's apps: the bar stays on top-level pages and the pages you drill into from them.
     val showNavBar = route == null || route == "home" || route.startsWith("album/") || route.startsWith("artist/")
 
@@ -199,77 +191,66 @@ private fun Library(container: AppContainer) {
       SharedTransitionLayout(Modifier.fillMaxSize()) {
        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
         Box(Modifier.fillMaxSize()) {
-            NavHost(
-                navController = nav,
-                startDestination = "home",
+            pageTransition.AnimatedContent(
                 modifier = Modifier.fillMaxSize(),
-                enterTransition = Motion.Enter,
-                exitTransition = Motion.Exit,
-                popEnterTransition = Motion.PopEnter,
-                popExitTransition = Motion.PopExit,
-            ) {
-                screen("home") {
-                    HomeScreen(
-                        container = container,
-                        player = player,
-                        vm = vm,
-                        actions = actions,
-                        onSearch = { go("search") },
-                        onSettings = { go("settings") },
-                        onAlbum = { go("album/$it") },
-                        onArtist = { go("artist/${Uri.encode(container.library.mainArtist(it))}") },
-                        tab = tab,
-                    )
+                transitionSpec = { pages.transitionSpec(this) },
+                contentKey = { it.key },
+            ) { page ->
+              CompositionLocalProvider(LocalAnimatedScope provides this) {
+                pageStates.SaveableStateProvider(page.key) {
+                    val r = page.route
+                    when {
+                        r == "home" -> HomeScreen(
+                            container = container,
+                            player = player,
+                            vm = vm,
+                            actions = actions,
+                            onSearch = { go("search") },
+                            onSettings = { go("settings") },
+                            onAlbum = { go("album/$it") },
+                            onArtist = { go("artist/${Uri.encode(container.library.mainArtist(it))}") },
+                            tab = tab,
+                        )
+                        r == "search" -> SearchScreen(
+                            container = container,
+                            player = player,
+                            vm = vm,
+                            actions = actions,
+                            onBack = { back() },
+                            onAlbum = { go("album/$it") },
+                            onArtist = { go("artist/${Uri.encode(container.library.mainArtist(it))}") },
+                        )
+                        r.startsWith("album/") -> AlbumScreen(
+                            albumId = r.removePrefix("album/").toLongOrNull() ?: 0L,
+                            container = container,
+                            player = player,
+                            vm = vm,
+                            actions = actions,
+                            onBack = { back() },
+                            onArtist = { go("artist/${Uri.encode(container.library.mainArtist(it))}") },
+                        )
+                        r.startsWith("artist/") -> ArtistScreen(
+                            name = Uri.decode(r.removePrefix("artist/")),
+                            container = container,
+                            player = player,
+                            vm = vm,
+                            actions = actions,
+                            onBack = { back() },
+                        )
+                        r == "settings" -> SettingsScreen(
+                            container,
+                            onBack = { back() },
+                            onFolders = { go("folders") },
+                        )
+                        r == "folders" -> FoldersScreen(container, onBack = { back() })
+                        r.startsWith("tags/") -> TagEditorScreen(
+                            songId = r.removePrefix("tags/").toLongOrNull() ?: 0L,
+                            container = container,
+                            onBack = { back() },
+                        )
+                    }
                 }
-                screen("search") {
-                    SearchScreen(
-                        container = container,
-                        player = player,
-                        vm = vm,
-                        actions = actions,
-                        onBack = { nav.popBackStack() },
-                        onAlbum = { go("album/$it") },
-                        onArtist = { go("artist/${Uri.encode(container.library.mainArtist(it))}") },
-                    )
-                }
-                screen("album/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
-                    AlbumScreen(
-                        albumId = entry.arguments?.getLong("id") ?: 0L,
-                        container = container,
-                        player = player,
-                        vm = vm,
-                        actions = actions,
-                        onBack = { nav.popBackStack() },
-                        onArtist = { go("artist/${Uri.encode(container.library.mainArtist(it))}") },
-                    )
-                }
-                screen("artist/{name}") { entry ->
-                    ArtistScreen(
-                        name = Uri.decode(entry.arguments?.getString("name").orEmpty()),
-                        container = container,
-                        player = player,
-                        vm = vm,
-                        actions = actions,
-                        onBack = { nav.popBackStack() },
-                    )
-                }
-                screen("settings") {
-                    SettingsScreen(
-                        container,
-                        onBack = { nav.popBackStack() },
-                        onFolders = { go("folders") },
-                    )
-                }
-                screen("folders") {
-                    FoldersScreen(container, onBack = { nav.popBackStack() })
-                }
-                screen("tags/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { entry ->
-                    TagEditorScreen(
-                        songId = entry.arguments?.getLong("id") ?: 0L,
-                        container = container,
-                        onBack = { nav.popBackStack() },
-                    )
-                }
+              }
             }
 
             // One dock for mini player + nav bar: a single surface, so they read as one piece.
@@ -309,7 +290,7 @@ private fun Library(container: AppContainer) {
                                 selected = tab.takeIf { route == "home" },
                                 onSelect = { t ->
                                     tab = t
-                                    if (route != "home") nav.popBackStack("home", inclusive = false)
+                                    pages.popToRoot().forEach { pageStates.removeState(it.key) }
                                 },
                             )
                         }
@@ -343,9 +324,9 @@ private fun Library(container: AppContainer) {
                     player = player,
                     vm = vm,
                     onCollapse = { nowPlayingOpen = false },
-                    onOpenAlbum = { id -> nowPlayingOpen = false; nav.navigate("album/$id") },
-                    onOpenArtist = { name -> nowPlayingOpen = false; nav.navigate("artist/${Uri.encode(container.library.mainArtist(name))}") },
-                    onEditTags = { id -> nowPlayingOpen = false; nav.navigate("tags/$id") },
+                    onOpenAlbum = { id -> nowPlayingOpen = false; go("album/$id") },
+                    onOpenArtist = { name -> nowPlayingOpen = false; go("artist/${Uri.encode(container.library.mainArtist(name))}") },
+                    onEditTags = { id -> nowPlayingOpen = false; go("tags/$id") },
                     showLyrics = showLyrics,
                     onShowLyrics = { showLyrics = it },
                 )
@@ -367,21 +348,31 @@ private fun Library(container: AppContainer) {
     }
     // With lyrics open, back first returns to the cover.
     BackHandler(enabled = nowPlayingOpen && showLyrics) { showLyrics = false }
-}
 
-private fun NavGraphBuilder.screen(
-    route: String,
-    arguments: List<NamedNavArgument> = emptyList(),
-    content: @Composable (NavBackStackEntry) -> Unit,
-) = composable(route, arguments) { entry ->
-    CompositionLocalProvider(LocalAnimatedScope provides this) {
-        // A back press while this page is still sliding in/out is ignored until the slide ends:
-        // reversing a page transition mid-way jams Navigation's animation, and the app then sat on a
-        // half-finished page that never became interactive. Never block touches here.
-        BackHandler(enabled = transition.isRunning) { }
-        content(entry)
+    // Predictive back between pages: the previous page follows your finger, and back commits on release.
+    // If a page animation is still running, back simply pops on release (seeking mid-animation is what
+    // jammed NavHost).
+    PredictiveBackHandler(enabled = !nowPlayingOpen && pages.stack.size > 1) { events ->
+        val prev = pages.previous
+        if (prev == null || pageState.currentState != pageState.targetState) {
+            events.collect { }
+            back()
+            return@PredictiveBackHandler
+        }
+        inPageBack = true
+        pages.popping = true
+        try {
+            events.collect { pageState.seekTo(it.progress, targetState = prev) }
+            back()
+        } catch (e: CancellationException) {
+            pageScope.launch { pageState.animateTo(pages.top) }
+            throw e
+        } finally {
+            inPageBack = false
+        }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
