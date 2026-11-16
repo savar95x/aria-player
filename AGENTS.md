@@ -32,9 +32,9 @@ Principles the owner has stated:
 
 ## How the owner works with you
 
-- Every push to `main` is built by CI and published as a GitHub release `v1.0.<n>` (version scheme in
+- Every push to `main` is built by CI and published as a GitHub release `v1.1.<n>` (version scheme in
   `gradle.properties`: `aria.version` + run number minus `aria.versionBase`; 1.0.0 shipped 2026-11-15,
-  the owner's "daily driver" milestone). Commit subjects become the release notes. The owner installs from the Releases page and reports back,
+  the owner's "daily driver" milestone; 1.1.0 on 2026-11-16 after the Retro-style player sheet). Commit subjects become the release notes. The owner installs from the Releases page and reports back,
   often with screenshots or screen recordings. **Ship by pushing to `main`**; no PRs or branches needed.
 - Commit subjects are user-facing (they become release notes). Write them as plain outcomes:
   "Queue opens without a blank pause", not "refactor QueueSheet".
@@ -84,10 +84,10 @@ Toolchain (all deliberately current; see gotchas before changing):
 | Coil | 3.6.3 with `coil-network-okhttp` |
 
 Signing: a shared keystore (`app/aria.keystore`, password in `app/build.gradle.kts`), so every
-build installs over the previous one. `versionCode` = CI run number (always increasing); `versionName` = 1.0.<n>.
+build installs over the previous one. `versionCode` = CI run number (always increasing); `versionName` = 1.1.<n>.
 
-Versioning: `gradle.properties` holds `aria.version=1.0` and `aria.versionBase=52`. To start 1.1 (or 2.0),
-set `aria.version=1.1` and `aria.versionBase` to the **next** CI run number (last run + 1), so the
+Versioning: `gradle.properties` holds `aria.version=1.1` and `aria.versionBase=65`. To start 1.2 (or 2.0),
+set `aria.version=1.2` and `aria.versionBase` to the **next** CI run number (last run + 1), so the
 first build of it is 1.1.0. A failed run still consumes a run number. Only bump when the owner asks.
 
 `*.apk` is git-ignored; download it to the repo root for verification without worrying about committing it.
@@ -287,6 +287,9 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
 - Confirmed on device by the owner: RemoteViews widget look, back/tap during page transitions, font page.
 - Not yet confirmed: widget buttons from a cold start on all three sizes; queue opening smoothness
   (fallback plan in "Queue sheet"); queue drag-reorder fix.
+- Fast scroller: thumb position is fractional (index + in-row offset over an estimated range from row
+  height and viewport), read in layout lambdas; dragging scrolls the list continuously with an offset.
+  Integer indices / visible-item counts made it step and jitter.
 - Corner roundness doesn't yet reach the nav bar indicator, the fast scroller, or the widget (widget
   corners are fixed by design). Only change if the owner asks.
 - Artist photo cache stores 1000px images (for zoom). Fine for hundreds of artists. Add a
