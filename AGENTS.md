@@ -287,9 +287,11 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
 - Confirmed on device by the owner: RemoteViews widget look, back/tap during page transitions, font page.
 - Not yet confirmed: widget buttons from a cold start on all three sizes; queue opening smoothness
   (fallback plan in "Queue sheet"); queue drag-reorder fix.
-- Fast scroller: thumb position is fractional (index + in-row offset over an estimated range from row
-  height and viewport), read in layout lambdas; dragging scrolls the list continuously with an offset.
-  Integer indices / visible-item counts made it step and jitter.
+- Fast scroller: progress in estimated pixels (average size over *all* visible items/rows, columns from
+  the fullest visible row, content padding included), pinned to exactly 0/1 via canScrollBackward/
+  Forward; read in layout lambdas; dragging scrolls continuously with an offset. Earlier versions used
+  integer indices, then the first item's size (header rows in the album grid made it jump) and ignored
+  the dock's bottom padding (thumb stopped short of the bottom).
 - Corner roundness doesn't yet reach the nav bar indicator, the fast scroller, or the widget (widget
   corners are fixed by design). Only change if the owner asks.
 - Artist photo cache stores 1000px images (for zoom). Fine for hundreds of artists. Add a

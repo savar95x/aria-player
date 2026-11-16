@@ -47,31 +47,42 @@ fun String.scrollInitial(): String {
     return if (c.isLetter()) c.uppercaseChar().toString() else "#"
 }
 
-// Position is fractional (first visible index + how far it's scrolled past), and the scrollable
-// range is estimated from row height and viewport, not the visible-item count: integer indices and a
-// count that flickers as rows enter/leave made the thumb step and jitter.
+// Progress is measured in estimated pixels: (first visible index × average item size + how far it's
+// scrolled past) over (all items × average size + content padding − viewport). Averages over every
+// visible item/row, so a short header row reaching the top doesn't jerk the thumb, and the content
+// padding (the dock's space) is counted, so the thumb reaches the bottom. At the real ends it pins
+// to 0 / 1 exactly.
+
+private class ScrollEstimate(val itemPx: Float, val perRow: Int, val maxScroll: Float)
 
 @Composable
 fun ListFastScroller(state: LazyListState, label: (Int) -> String?, modifier: Modifier = Modifier) {
-    fun range(): Pair<Float, Float> { // (scrollable items, item size px)
+    fun estimate(): ScrollEstimate {
         val info = state.layoutInfo
-        val size = (info.visibleItemsInfo.firstOrNull()?.size ?: 1).coerceAtLeast(1).toFloat()
-        val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
-        return (info.totalItemsCount - viewport / size).coerceAtLeast(1f) to size
+        val items = info.visibleItemsInfo
+        val avg = if (items.isEmpty()) 1f else (items.sumOf { it.size } + info.mainAxisItemSpacing * (items.size - 1)).toFloat() / items.size
+        val content = info.totalItemsCount * avg + info.beforeContentPadding + info.afterContentPadding
+        return ScrollEstimate(avg.coerceAtLeast(1f), 1, (content - info.viewportSize.height).coerceAtLeast(1f))
     }
     FastScroller(
         total = remember(state) { derivedStateOf { state.layoutInfo.totalItemsCount } }.value,
         scrolling = state.isScrollInProgress,
         progress = {
-            val (scrollable, size) = range()
-            ((state.firstVisibleItemIndex + state.firstVisibleItemScrollOffset / size) / scrollable).coerceIn(0f, 1f)
+            when {
+                !state.canScrollBackward -> 0f
+                !state.canScrollForward -> 1f
+                else -> {
+                    val e = estimate()
+                    ((state.firstVisibleItemIndex * e.itemPx + state.firstVisibleItemScrollOffset) / e.maxScroll).coerceIn(0f, 1f)
+                }
+            }
         },
-        indexAt = { f -> (f * range().first).toInt() },
+        indexAt = { f -> val e = estimate(); (f * e.maxScroll / e.itemPx).toInt() },
         onScrollTo = { f ->
-            val (scrollable, size) = range()
-            val exact = f * scrollable
-            val index = exact.toInt()
-            state.scrollToItem(index, ((exact - index) * size).roundToInt())
+            val e = estimate()
+            val px = f * e.maxScroll
+            val index = (px / e.itemPx).toInt()
+            state.scrollToItem(index, (px - index * e.itemPx).roundToInt())
         },
         label = label,
         modifier = modifier,
@@ -80,27 +91,36 @@ fun ListFastScroller(state: LazyListState, label: (Int) -> String?, modifier: Mo
 
 @Composable
 fun GridFastScroller(state: LazyGridState, label: (Int) -> String?, modifier: Modifier = Modifier) {
-    fun range(): Triple<Float, Float, Int> { // (scrollable items, row height px, columns)
+    fun estimate(): ScrollEstimate {
         val info = state.layoutInfo
-        val first = info.visibleItemsInfo.firstOrNull()
-        val height = (first?.size?.height ?: 1).coerceAtLeast(1).toFloat()
-        val columns = first?.let { f -> info.visibleItemsInfo.count { it.row == f.row } }?.coerceAtLeast(1) ?: 1
-        val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
-        return Triple((info.totalItemsCount - viewport / height * columns).coerceAtLeast(1f), height, columns)
+        val rows = info.visibleItemsInfo.groupBy { it.row }
+        // Columns from the fullest visible row (headers span the whole width and count as one).
+        val perRow = rows.values.maxOfOrNull { it.size }?.coerceAtLeast(1) ?: 1
+        val rowPx = if (rows.isEmpty()) 1f
+        else (rows.values.sumOf { r -> r.maxOf { it.size.height } } + info.mainAxisItemSpacing * (rows.size - 1)).toFloat() / rows.size
+        val content = (info.totalItemsCount.toFloat() / perRow) * rowPx + info.beforeContentPadding + info.afterContentPadding
+        return ScrollEstimate(rowPx.coerceAtLeast(1f), perRow, (content - info.viewportSize.height).coerceAtLeast(1f))
     }
     FastScroller(
         total = remember(state) { derivedStateOf { state.layoutInfo.totalItemsCount } }.value,
         scrolling = state.isScrollInProgress,
         progress = {
-            val (scrollable, height, columns) = range()
-            ((state.firstVisibleItemIndex + state.firstVisibleItemScrollOffset / height * columns) / scrollable).coerceIn(0f, 1f)
+            when {
+                !state.canScrollBackward -> 0f
+                !state.canScrollForward -> 1f
+                else -> {
+                    val e = estimate()
+                    val rowsAbove = state.firstVisibleItemIndex.toFloat() / e.perRow
+                    ((rowsAbove * e.itemPx + state.firstVisibleItemScrollOffset) / e.maxScroll).coerceIn(0f, 1f)
+                }
+            }
         },
-        indexAt = { f -> (f * range().first).toInt() },
+        indexAt = { f -> val e = estimate(); (f * e.maxScroll / e.itemPx * e.perRow).toInt() },
         onScrollTo = { f ->
-            val (scrollable, height, columns) = range()
-            val exact = f * scrollable
-            val row = (exact / columns).toInt()
-            state.scrollToItem(row * columns, ((exact / columns - row) * height).roundToInt())
+            val e = estimate()
+            val px = f * e.maxScroll
+            val row = (px / e.itemPx).toInt()
+            state.scrollToItem(row * e.perRow, (px - row * e.itemPx).roundToInt())
         },
         label = label,
         modifier = modifier,
