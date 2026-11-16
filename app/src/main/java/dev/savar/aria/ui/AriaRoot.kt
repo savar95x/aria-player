@@ -218,7 +218,8 @@ private fun Library(container: AppContainer) {
     val sheet = remember { Animatable(if (npTarget) 1f else 0f, visibilityThreshold = Motion.SheetThreshold) }
     var sheetDragging by remember { mutableStateOf(false) }
     var dragPos by remember { mutableFloatStateOf(0f) }
-    val sheetPos: () -> Float = { if (sheetDragging) dragPos else sheet.value }
+    // Clamped: a flick's velocity can carry the spring a hair past 0 or 1 (a negative corner radius crashed).
+    val sheetPos: () -> Float = { (if (sheetDragging) dragPos else sheet.value).coerceIn(0f, 1f) }
     val sheetShown by remember { derivedStateOf { sheetPos() > 0f } }
     var rootHeight by remember { mutableIntStateOf(1) }
     var dockTop by remember { mutableFloatStateOf(0f) }
@@ -245,7 +246,7 @@ private fun Library(container: AppContainer) {
     }
     fun grab() {
         settleJob[0]?.cancel()
-        dragPos = sheet.value
+        dragPos = sheet.value.coerceIn(0f, 1f)
         sheetDragging = true
         npScope.launch { sheet.stop() }
     }

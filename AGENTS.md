@@ -240,6 +240,8 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
   mid-animation, started below the dock, nav bar vanished).
   The Animatable and spring use `Motion.SheetThreshold` (0.0002): Compose's default 0.01 cutoff
   snapped the last ~20px at the end of every open/close, which the owner saw as a frame drop.
+  Always read the position through `sheetPos()` (clamped to 0..1): a flick can overshoot the spring
+  slightly, and a negative corner radius crashed 1.0.11.
   The dock's top corners are capped at the default 28dp (a rounder dock looked bloated); the covers
   themselves follow the slider fully.
 - Now playing bottom row: **Sleep** and **Queue** as text buttons (not icon-only). Lyrics lives in
