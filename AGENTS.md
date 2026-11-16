@@ -4,6 +4,16 @@ Notes for whoever (human or AI agent) picks this up next. Read this before chang
 `README.md` is the user-facing overview; this file covers how the project is built, how it's laid out,
 what the owner has decided, and what has already been tried.
 
+## Quick start (new session)
+
+1. Read this whole file. `CLAUDE.md` just includes it, so Claude Code / Cowork load it automatically.
+2. `git pull`. Work on `main`.
+3. Make the change. Keep it lean, follow "Things to know" for the area you touch.
+4. Commit with a user-facing subject (it becomes the release note), push, and watch CI (see Building).
+5. Download the APK, run `tools/verify_apk.py`, then tell the owner the version and what to look for.
+6. If anything here turned out wrong or you learned something the next agent needs, update this file
+   in the same push.
+
 ## The product
 
 Aria is a lean, native Android music player for **local files**. The owner uses it every day on a
@@ -44,6 +54,19 @@ There is usually **no Android SDK in the agent sandbox**: CI is the compiler.
 `gh` GraphQL is blocked in agent sessions, so `gh release list/download` fail. Use the REST
 API (`gh api repos/...`). `tools/verify_apk.py` shows how to download the APK.
 
+CI (`.github/workflows/build.yml`): JDK 17, `./gradlew assembleRelease`; on failure it posts the
+errors as an annotation and a `ci-log` pre-release; on success on `main` it deletes `ci-log` and
+creates release `v<aria.version>.<run − aria.versionBase>` with `aria.apk` and the commit subjects since
+the previous tag as notes. A newer push cancels a running build (concurrency group).
+
+Agent sessions can create commits and read releases, but **editing a release returns 403**. If the
+owner wants hand-written notes (e.g. for a milestone), write them to a file and hand it over.
+
+**With a local SDK** (e.g. Cowork on the owner's machine, or Android Studio): JDK 17+, Android SDK
+with platform 37, then `./gradlew assembleRelease` → `app/build/outputs/apk/release/app-release.apk`
+(signed with the shared keystore, installs over the release builds). `adb install -r` it to test.
+Still push to `main` afterwards; the owner installs from Releases.
+
 Before telling the owner a build is ready, run `python3 tools/verify_apk.py aria.apk`. It catches:
 - manifest components that R8 stripped;
 - calls into library methods that don't exist (version mismatches).
@@ -62,6 +85,12 @@ Toolchain (all deliberately current; see gotchas before changing):
 
 Signing: a shared keystore (`app/aria.keystore`, password in `app/build.gradle.kts`), so every
 build installs over the previous one. `versionCode` = CI run number (always increasing); `versionName` = 1.0.<n>.
+
+Versioning: `gradle.properties` holds `aria.version=1.0` and `aria.versionBase=52`. To start 1.1 (or 2.0),
+set `aria.version=1.1` and `aria.versionBase` to the **next** CI run number (last run + 1), so the
+first build of it is 1.1.0. A failed run still consumes a run number. Only bump when the owner asks.
+
+`*.apk` is git-ignored; download it to the repo root for verification without worrying about committing it.
 
 ## Layout
 
@@ -89,8 +118,10 @@ app/src/main/java/dev/savar/aria/
                        cached in filesDir/lyrics
     ArtistPhotos.kt    Deezer (matched through the user's own albums) + Wikipedia; user overrides;
                        files in filesDir/artists (format documented in the class)
-    SettingsStore      DataStore prefs (theme, AMOLED, dynamic colour, Google Font, sorts, folders,
-                       pinned albums, corner roundness)
+    SettingsStore      DataStore prefs (theme, AMOLED, dynamic colour, Google Font + text size/weight/
+                       letter spacing, sorts, folders, pinned albums, corner roundness)
+    FontCatalog.kt     All Google Fonts (fonts.google.com/metadata/fonts), cached weekly in filesDir;
+                       falls back to a featured list offline
     QueueStore         Saved queue + position (restored at service start and by the widget)
     Links.kt           "Play a link" (http audio, HLS, radio). Media ids prefixed "url:"
   metadata/            iTunes Search lookup + jaudiotagger tag writer (tag editor screen)
@@ -100,7 +131,8 @@ app/src/main/java/dev/savar/aria/
     WidgetUpdateReceiver  player -> widget broadcast
     WidgetActionReceiver  widget buttons -> player (direct call if running, else MediaController)
   ui/
-    AriaRoot.kt        Pages (own navigator, see Pages.kt), dock (mini player + ShortNavigationBar), now-playing overlay with
+    Pages.kt           Own navigator: back stack, PageHost, transitions (see Navigation below)
+    AriaRoot.kt        Routes + Pages (own navigator, see Pages.kt), dock (mini player + ShortNavigationBar), now-playing overlay with
                        predictive back, lyrics state (back closes lyrics first)
     PlayerViewModel    MediaController wrapper; physical shuffle (reorders the real queue around the
                        current item, keeps the original order for un-shuffle)
@@ -108,7 +140,8 @@ app/src/main/java/dev/savar/aria/
     theme/             Theme (Expressive), Fonts (downloadable Google Fonts; catalogue in data/FontCatalog), Corners
     components/        ArtImage, ArtistImage, SongRow, FastScroller...
     screens/           Library (home tabs, album, artist, search), Player (now playing, mini player,
-                       seek bar), QueueSheet, LyricsPane, TagEditor, Settings, ArtistPhotoViewer
+                       seek bar), QueueSheet, LyricsPane, TagEditor, Settings, Fonts (font page +
+                       Typeface picker), ArtistPhotoViewer
 tools/verify_apk.py    Static APK checks (see Building)
 docs/                  README images (hero.png is a composite made with Pillow from docs/screenshots)
 ```
@@ -140,6 +173,17 @@ pressed mid-animation; only reordering z (AnimatedContent `targetContentZIndex`)
 **Never block or debounce input on the destination**: the owner compares against Metro/Retro, where you
 can tap through any transition. Earlier guards (RESUMED-only taps, whole-screen touch-eating overlay,
 a 400ms debounce) froze the app or swallowed taps.
+
+**Routes** (AriaRoot): `home`, `search`, `album/<id>`, `artist/<Uri-encoded name>`, `settings`, `fonts`,
+`typeface`, `folders`, `tags/<songId>`. Always open artists through `library.mainArtist(name)` so
+"A feat. B" lands on A. From now playing, `onOpenArtist` / `onOpenAlbum` close the player first.
+
+**Fonts.** Settings → Font is one scrolling page: live preview, a Typeface row (opens the separate
+`typeface` page: pinned search + category chips over a list of every Google Font), and Text style
+sliders: size 0.8–1.3×, weight −300..+300, letter spacing −5..+5 px (smooth, snaps to 0 near 0).
+`typographyFor(font, textScale, weightDelta, letterSpacing)` in `ui/theme/Fonts.kt` builds the
+Typography; downloadable fonts request weights 100–900 so the weight slider works. "Reset to
+defaults" lives in the ⋮ menu behind a confirmation dialog (the owner didn't want it one tap away).
 
 **Seek bar.** Holds at 0 until the new song's duration is known (otherwise it races to the end on skip).
 
@@ -173,6 +217,8 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
   opens now playing; swipe up inside now playing opens the queue.
 - Now playing bottom row: **Sleep** and **Queue** as text buttons (not icon-only). Lyrics lives in
   the ⋮ menu as plain text with no icon ("Lyrics" / "Hide lyrics").
+- Tapping the artist name on now playing (big view and lyrics header) opens the artist. The mini
+  player's text is not separately tappable: a tap anywhere on it opens the player.
 - Back with lyrics open closes the lyrics (cover morphs back) before closing the player.
 - Fonts slightly smaller than M3 defaults. Artist names must never clip.
 - Motion: fluid, shared-axis / container transforms, not plain fades.
@@ -209,7 +255,10 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
 ## Ideas / open threads
 
 - Owner's possible future features: online streaming and downloads (keep it lean).
-- Needs on-device confirmation: new RemoteViews widget (all three sizes, buttons from cold start),
-  artist photo matching and the picker, queue opening smoothness.
+- Confirmed on device by the owner: RemoteViews widget look, back/tap during page transitions, font page.
+- Not yet confirmed: widget buttons from a cold start on all three sizes; queue opening smoothness
+  (fallback plan in "Queue sheet"); queue drag-reorder fix.
+- Corner roundness doesn't yet reach the nav bar indicator, the fast scroller, or the widget (widget
+  corners are fixed by design). Only change if the owner asks.
 - Artist photo cache stores 1000px images (for zoom). Fine for hundreds of artists. Add a
   "clear" action only if it becomes a problem.

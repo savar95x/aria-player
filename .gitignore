@@ -8,3 +8,6 @@ build/
 .externalNativeBuild
 .cxx
 .kotlin/
+
+# Downloaded release APKs (for tools/verify_apk.py)
+*.apk
