@@ -116,10 +116,12 @@ private fun SyncedLyrics(lines: List<LyricLine>, vm: PlayerViewModel) {
     // Lead by a moment so the highlight lands as the line is sung, not after.
     val current by remember(lines) { derivedStateOf { lines.indexOfLast { it.timeMs <= position + 250 } } }
 
-    val listState = rememberLazyListState()
+    // Open already on the line being sung (not at the top, waiting for the next line to scroll).
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = current.coerceAtLeast(0))
     val dragged by listState.interactionSource.collectIsDraggedAsState()
     var lastTouch by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(dragged) { lastTouch = SystemClock.uptimeMillis() }
+    // Only a real scroll pauses following; the first composition (dragged = false) must not.
+    LaunchedEffect(dragged) { if (dragged || lastTouch != 0L) lastTouch = SystemClock.uptimeMillis() }
     // Follow the song, unless you've just scrolled yourself.
     LaunchedEffect(current) {
         if (current >= 0 && !dragged && SystemClock.uptimeMillis() - lastTouch > 2500) {

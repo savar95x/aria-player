@@ -57,6 +57,11 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -588,11 +593,13 @@ fun ArtistScreen(
     vm: PlayerViewModel,
     actions: SongActions,
     onBack: () -> Unit,
+    photoOpen: Boolean,
+    onViewPhoto: (Artist, Rect) -> Unit,
 ) {
     val artists by container.library.artists.collectAsStateWithLifecycle()
     val artist = artists.firstOrNull { it.name == name }
-    var viewingPhoto by remember { mutableStateOf(false) }
-    if (viewingPhoto && artist != null) ArtistPhotoViewer(artist, container.artistPhotos) { viewingPhoto = false }
+    // Where the header photo is, so the full-screen viewer can grow out of it (and back into it).
+    var photoBounds by remember { mutableStateOf(Rect.Zero) }
     Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = { BackTopBar(onBack = onBack) }) { padding ->
         if (artist == null) return@Scaffold
         LazyColumn(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize(), contentPadding = listBottomPadding()) {
@@ -600,7 +607,12 @@ fun ArtistScreen(
                 Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     ArtistImage(
                         artist,
-                        Modifier.sharedArt("artist-${artist.name}").size(168.dp).clip(pill()).clickable { viewingPhoto = true },
+                        Modifier.sharedArt("artist-${artist.name}").size(168.dp)
+                            .onGloballyPositioned { photoBounds = Rect(it.positionInRoot(), it.size.toSize()) }
+                            // Hidden while the viewer shows it, so there's only ever one copy on screen.
+                            .graphicsLayer { alpha = if (photoOpen) 0f else 1f }
+                            .clip(CircleShape)
+                            .clickable { onViewPhoto(artist, photoBounds) },
                         sizePx = 480,
                         placeholderPx = 160,
                     )

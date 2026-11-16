@@ -90,6 +90,9 @@ import dev.savar.aria.AppContainer
 import dev.savar.aria.ui.components.SongActions
 import dev.savar.aria.ui.screens.AlbumScreen
 import dev.savar.aria.ui.screens.ArtistScreen
+import dev.savar.aria.ui.screens.ArtistPhotoViewer
+import dev.savar.aria.data.Artist
+import androidx.compose.ui.geometry.Rect
 import dev.savar.aria.ui.screens.FoldersScreen
 import dev.savar.aria.ui.screens.FontsScreen
 import dev.savar.aria.ui.screens.TypefaceScreen
@@ -157,6 +160,8 @@ private fun Library(container: AppContainer) {
     fun go(route: String) = pages.push(route)
     fun back() { pages.pop() }
     var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
+    // Full-screen artist photo (artist + where its header image is), drawn over everything.
+    var photoViewer by remember { mutableStateOf<Pair<Artist, Rect>?>(null) }
     var showLyrics by rememberSaveable { mutableStateOf(false) }
 
     val actions = remember(vm, pages) {
@@ -233,6 +238,8 @@ private fun Library(container: AppContainer) {
                             vm = vm,
                             actions = actions,
                             onBack = { back() },
+                            photoOpen = photoViewer != null,
+                            onViewPhoto = { a, bounds -> photoViewer = a to bounds },
                         )
                         r == "settings" -> SettingsScreen(
                             container,
@@ -330,6 +337,10 @@ private fun Library(container: AppContainer) {
                 )
               }
             }
+
+            photoViewer?.let { (artist, bounds) ->
+                ArtistPhotoViewer(artist, container.artistPhotos, bounds) { photoViewer = null }
+            }
         }
        }
       }
@@ -350,7 +361,7 @@ private fun Library(container: AppContainer) {
     // Predictive back between pages: the previous page follows your finger, and back commits on release.
     // If a page animation is still running, back simply pops on release (seeking mid-animation is what
     // jammed NavHost).
-    PredictiveBackHandler(enabled = !nowPlayingOpen && pages.stack.size > 1) { events ->
+    PredictiveBackHandler(enabled = !nowPlayingOpen && photoViewer == null && pages.stack.size > 1) { events ->
         val prev = pages.previous
         if (prev == null || pageState.currentState != pageState.targetState) {
             events.collect { }

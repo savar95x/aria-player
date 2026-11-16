@@ -4,6 +4,18 @@ package dev.savar.aria.ui.screens
 
 import dev.savar.aria.ui.theme.pill
 import android.net.Uri
+import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -74,8 +86,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -90,66 +100,115 @@ import kotlin.math.abs
 /**
  * Full-screen artist photo: pinch or double-tap to zoom, drag to look around, swipe down to close.
  * "Change photo" opens the picker.
+ *
+ * Drawn in the app's own window (over everything, from AriaRoot) rather than a Dialog, so the photo
+ * can grow out of the round header image and shrink back into it (a container transform) instead of
+ * the dialog's fade. [source] is the header image's bounds in root coordinates.
  */
 @Composable
-fun ArtistPhotoViewer(artist: Artist, photos: ArtistPhotos, onDismiss: () -> Unit) {
+fun ArtistPhotoViewer(artist: Artist, photos: ArtistPhotos, source: Rect, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val version by photos.changes.collectAsState()
     val photo = remember(version, artist.name) { photos.cached(artist.name) }
     var picking by remember { mutableStateOf(false) }
     val dismissY = remember { Animatable(0f) }
+    val open = remember { Animatable(0f) }
+    var closing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-    ) {
-        val fade = (1f - abs(dismissY.value) / 1200f).coerceIn(0f, 1f)
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = fade))) {
-            ZoomableImage(
-                model = remember(photo, artist) {
-                    ImageRequest.Builder(context)
-                        .data(photo ?: artist.art.copy(sizePx = 1024))
-                        .size(Size.ORIGINAL)
-                        .crossfade(true)
-                        .build()
-                },
-                onDrag = { dy -> scope.launch { dismissY.snapTo(dismissY.value + dy) } },
-                onDragEnd = {
-                    scope.launch {
-                        if (abs(dismissY.value) > 260f) onDismiss() else dismissY.animateTo(0f, spring())
-                    }
-                },
-                modifier = Modifier.fillMaxSize().graphicsLayer { translationY = dismissY.value },
-            )
-            Row(
-                Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 4.dp, vertical = 4.dp)
-                    .graphicsLayer { alpha = fade },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onDismiss) { Icon(Icons.Rounded.Close, "Close", tint = Color.White) }
-                Text(
-                    artist.name,
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            FilledTonalButton(shape = pill(), 
-                onClick = { picking = true },
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 24.dp)
-                    .graphicsLayer { alpha = fade },
-            ) { Text("Change photo") }
+    LaunchedEffect(Unit) { open.animateTo(1f, spring(dampingRatio = 1f, stiffness = 650f)) }
+    fun close() {
+        if (closing) return
+        closing = true
+        scope.launch {
+            launch { dismissY.animateTo(0f, spring(dampingRatio = 1f, stiffness = 900f)) }
+            open.animateTo(0f, spring(dampingRatio = 1f, stiffness = 900f))
+            onDismiss()
         }
-        if (picking) ArtistPhotoPicker(artist, photos) { picking = false }
     }
+    BackHandler(enabled = !closing) { close() }
+
+    // Light status bar icons over the black backdrop, whatever the theme.
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val window = (view.context as? Activity)?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        val wasLight = controller?.isAppearanceLightStatusBars
+        controller?.isAppearanceLightStatusBars = false
+        onDispose { if (wasLight != null) controller?.isAppearanceLightStatusBars = wasLight }
+    }
+
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    val fade = (1f - abs(dismissY.value) / 1200f).coerceIn(0f, 1f)
+    val p = open.value
+    val chrome = ((p - 0.5f) * 2f).coerceIn(0f, 1f) * fade
+    Box(
+        Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { origin = it.positionInRoot() }
+            .drawBehind { drawRect(Color.Black.copy(alpha = p.coerceIn(0f, 1f) * fade)) },
+    ) {
+        ZoomableImage(
+            model = remember(photo, artist) {
+                ImageRequest.Builder(context)
+                    .data(photo ?: artist.art.copy(sizePx = 1024))
+                    .size(Size.ORIGINAL)
+                    .crossfade(true)
+                    .build()
+            },
+            // The header's copy is already in memory: shown at once, under the full-size one.
+            placeholder = remember(photo, artist) {
+                if (photo != null) ImageRequest.Builder(context).data(photo).size(480).build()
+                else artist.art.copy(sizePx = 480)
+            },
+            source = source.translate(-origin),
+            progress = { open.value },
+            offsetY = { dismissY.value },
+            closing = closing,
+            onDrag = { dy -> if (!closing) scope.launch { dismissY.snapTo(dismissY.value + dy) } },
+            onDragEnd = {
+                if (!closing) scope.launch {
+                    if (abs(dismissY.value) > 260f) close() else dismissY.animateTo(0f, spring())
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+        Row(
+            Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 4.dp, vertical = 4.dp)
+                .graphicsLayer { alpha = chrome },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = { close() }) { Icon(Icons.Rounded.Close, "Close", tint = Color.White) }
+            Text(
+                artist.name,
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        FilledTonalButton(
+            shape = pill(),
+            onClick = { picking = true },
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 24.dp)
+                .graphicsLayer { alpha = chrome },
+        ) { Text("Change photo") }
+    }
+    if (picking) ArtistPhotoPicker(artist, photos) { picking = false }
 }
 
-/** Square image that fits the screen; pinch, pan and double-tap zoom. Vertical drags at 1x go to [onDrag]. */
+/**
+ * Square image that fits the screen; pinch, pan and double-tap zoom. Vertical drags at 1x go to [onDrag].
+ * At [progress] 0 the image sits exactly over [source] as a circle; at 1 it fills the screen width.
+ */
 @Composable
 private fun ZoomableImage(
     model: Any,
+    placeholder: Any,
+    source: Rect,
+    progress: () -> Float,
+    offsetY: () -> Float,
+    closing: Boolean,
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier,
@@ -157,6 +216,18 @@ private fun ZoomableImage(
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     val scope = rememberCoroutineScope()
+
+    // Closing while zoomed in: settle back to 1x as the photo flies home.
+    LaunchedEffect(closing) {
+        if (closing && (scale != 1f || offset != Offset.Zero)) {
+            val s0 = scale
+            val o0 = offset
+            animate(0f, 1f, animationSpec = spring(dampingRatio = 1f, stiffness = 900f)) { t, _ ->
+                scale = s0 + (1f - s0) * t
+                offset = o0 * (1f - t)
+            }
+        }
+    }
 
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val w = constraints.maxWidth.toFloat()
@@ -180,27 +251,41 @@ private fun ZoomableImage(
             }
         }
 
-        AsyncImage(
-            model = model,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
+        Box(
+            Modifier
                 .aspectRatio(1f)
                 .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = offset.x
-                    translationY = offset.y
+                    // Container transform: from the header circle to the full-width square.
+                    val p = progress()
+                    val q = 1f - p
+                    val from = if (source.width > 0f) source.width / side else 0.4f
+                    val k = from + (1f - from) * p
+                    scaleX = k
+                    scaleY = k
+                    translationX = (source.center.x - w / 2f) * q
+                    translationY = (source.center.y - h / 2f) * q + offsetY()
+                    shape = RoundedCornerShape(CornerSize((50f * q).coerceIn(0f, 50f)))
+                    clip = p < 0.999f
                 },
-        )
+        ) {
+            val zoom = Modifier.fillMaxSize().graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                translationX = offset.x
+                translationY = offset.y
+            }
+            AsyncImage(model = placeholder, contentDescription = null, contentScale = ContentScale.Crop, modifier = zoom)
+            AsyncImage(model = model, contentDescription = null, contentScale = ContentScale.Crop, modifier = zoom)
+        }
         // Gestures on a full-size overlay, so you can pinch anywhere on screen.
         Box(
             Modifier
                 .fillMaxSize()
                 .pointerInput(w, h) {
-                    detectTapGestures(onDoubleTap = { tap -> zoomTo(if (scale > 1.05f) 1f else 2.5f, tap) })
+                    detectTapGestures(onDoubleTap = { tap -> if (!closing) zoomTo(if (scale > 1.05f) 1f else 2.5f, tap) })
                 }
-                .pointerInput(w, h) {
+                .pointerInput(w, h, closing) {
+                    if (closing) return@pointerInput
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
                         var dismissing = false

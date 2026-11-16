@@ -4,7 +4,7 @@ package dev.savar.aria.ui.screens
 
 import dev.savar.aria.ui.theme.pill
 import dev.savar.aria.ui.theme.playerArtShape
-import dev.savar.aria.ui.theme.cornerDp
+import dev.savar.aria.ui.theme.playButtonCorner
 import dev.savar.aria.ui.theme.rounded
 import android.os.SystemClock
 import androidx.compose.animation.AnimatedContent
@@ -519,8 +519,8 @@ private fun Controls(player: PlayerUiState, vm: PlayerViewModel) {
         IconButton(onClick = { vm.previous() }, modifier = Modifier.size(56.dp)) {
             Icon(Icons.Rounded.SkipPrevious, "Previous", Modifier.size(36.dp))
         }
-        // Squircle when paused, rounder while playing.
-        val corner by animateDpAsState(if (player.playing) cornerDp(40.dp) else cornerDp(26.dp), label = "playCorner")
+        // Squircle when paused, round while playing (one fixed shape below 50% roundness).
+        val corner by animateDpAsState(playButtonCorner(player.playing), label = "playCorner")
         Box(
             Modifier
                 .size(80.dp)

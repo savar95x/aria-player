@@ -78,7 +78,22 @@ fun playerArtShape(): Shape = morphingRounded(52.dp to 12.dp, 280.dp to 28.dp)
 fun albumArtShape(): Shape = morphingRounded(52.dp to 12.dp, 160.dp to 18.dp, 240.dp to 24.dp)
 
 /**
- * Pills and circles (buttons, the search bar, segmented buttons, artist photos): fully round at the
+ * The big play/pause button. From 50% roundness up it ignores the slider and keeps Material's
+ * squircle (paused) <-> circle (playing) morph; below 50% it follows the slider with one fixed
+ * shape, because two slightly different small radii just looked like a glitch.
+ */
+@Composable
+@ReadOnlyComposable
+fun playButtonCorner(playing: Boolean): Dp {
+    val scale = LocalCornerScale.current
+    return when {
+        scale >= 0.5f -> if (playing) 40.dp else 26.dp
+        else -> 26.dp * scale
+    }
+}
+
+/**
+ * Pills and circles (buttons, the search bar, segmented buttons): fully round at the
  * default roundness and above, squaring off as the slider goes down (square at 0).
  */
 @Composable
