@@ -36,11 +36,8 @@ object Motion {
     val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
     val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
-    /** Now playing slides its full height over this long (linear), so drags can seek it 1:1. */
-    const val SheetMs = 450
-
-    /** How the now-playing fraction finishes after a tap or a released drag. */
-    val SheetSettle = spring<Float>(dampingRatio = 1f, stiffness = 380f)
+    /** How the now-playing sheet finishes after a tap or a released drag (carries the flick's speed). */
+    val SheetSpring = spring<Float>(dampingRatio = 1f, stiffness = 420f)
 
     /** Springy but settled: used for art flying between screens. */
     // Critically damped and stiffer: same glide, but no slow settling tail. Navigation counts a page

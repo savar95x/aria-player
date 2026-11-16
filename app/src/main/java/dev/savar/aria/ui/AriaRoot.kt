@@ -2,6 +2,9 @@ package dev.savar.aria.ui
 
 import dev.savar.aria.ui.theme.pill
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.Animatable
+import androidx.compose.runtime.derivedStateOf
+import kotlinx.coroutines.Job
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
@@ -206,77 +209,86 @@ private fun Library(container: AppContainer) {
         nowPlayingOpen = true
     }
 
-    // Now playing is a sheet driven by a seekable transition, like Retro/Metro's sliding panel: it
-    // starts collapsed at the dock's top edge (showing a copy of the mini player) and its top edge
-    // follows your finger both ways: drag the dock up to open, drag the player down to close.
-    // Taps and releases animate the rest of the way.
+    // Now playing is a sheet, like Retro's sliding panel. One number drives it: sheet = 0 collapsed
+    // onto the dock, 1 fully open. A finger owns it outright (it follows 1:1 both ways, and you can
+    // catch it mid-animation and throw it back); on release it springs to the nearer end, or the way
+    // you flicked, carrying the flick's speed.
     val npTarget = nowPlayingOpen && hasMini
-    val npState = remember { SeekableTransitionState(npTarget) }
-    val npTransition = rememberTransition(npState, label = "nowPlaying")
-    // While a finger is on the sheet: which way it's heading (true = opening) and how far it's moved.
-    var npDragDir by remember { mutableStateOf<Boolean?>(null) }
-    var npDrag by remember { mutableFloatStateOf(0f) }
+    val sheet = remember { Animatable(if (npTarget) 1f else 0f) }
+    var sheetDragging by remember { mutableStateOf(false) }
+    var dragPos by remember { mutableFloatStateOf(0f) }
+    val sheetPos: () -> Float = { if (sheetDragging) dragPos else sheet.value }
+    val sheetShown by remember { derivedStateOf { sheetPos() > 0f } }
     var rootHeight by remember { mutableIntStateOf(1) }
     var dockTop by remember { mutableFloatStateOf(0f) }
     var showQueue by rememberSaveable { mutableStateOf(false) }
     val npScope = rememberCoroutineScope()
+    val settleJob = remember { arrayOfNulls<Job>(1) }
     // How far the sheet travels: from the dock's top edge (collapsed) to the top of the screen.
     fun sheetTravel() = if (dockTop > 0f) dockTop else rootHeight * 0.85f
+    fun settle(open: Boolean, velocity: Float = 0f) {
+        nowPlayingOpen = open
+        settleJob[0]?.cancel()
+        settleJob[0] = npScope.launch {
+            sheet.snapTo(sheetPos())
+            sheetDragging = false
+            sheet.animateTo(if (open) 1f else 0f, Motion.SheetSpring, initialVelocity = velocity)
+        }
+    }
+    // Opening/closing from anywhere else (taps, the collapse button, back, links).
     LaunchedEffect(npTarget) {
-        if (npDragDir == null) npState.animateTo(npTarget, Motion.SheetSettle)
-    }
-    LaunchedEffect(Unit) {
-        snapshotFlow { npDragDir?.let { it to npDrag } }.collect { drag ->
-            val (target, dist) = drag ?: return@collect
-            if (npState.targetState != target) npState.seekTo(0f, targetState = target)
-            // The sheet moves linearly over Motion.SheetMs of play time, so this fraction keeps its
-            // top edge exactly under the finger.
-            val total = npTransition.totalDurationNanos.coerceAtLeast(1L)
-            val travel = (dist / sheetTravel()).coerceIn(0f, 1f)
-            npState.seekTo((travel * Motion.SheetMs * 1_000_000L / total).coerceIn(0f, 1f), targetState = target)
+        val target = if (npTarget) 1f else 0f
+        if (!sheetDragging && settleJob[0]?.isActive != true && sheet.targetValue != target) {
+            sheet.animateTo(target, Motion.SheetSpring)
         }
     }
-    fun releaseSheet(velocity: Float, fling: Float) {
-        val opening = npDragDir ?: return
-        val travel = npDrag / sheetTravel()
-        npDragDir = null
-        if (opening) {
-            if (npDrag > 0f && (travel > 0.25f || velocity < -fling)) nowPlayingOpen = true
-            else npScope.launch { npState.animateTo(false, Motion.SheetSettle) }
-        } else {
-            if (npDrag > 0f && (travel > 0.25f || velocity > fling)) nowPlayingOpen = false
-            else npScope.launch { npState.animateTo(true, Motion.SheetSettle) }
-        }
+    fun grab() {
+        settleJob[0]?.cancel()
+        dragPos = sheet.value
+        sheetDragging = true
+        npScope.launch { sheet.stop() }
     }
-    // Drag up on the dock.
+    fun dragBy(dy: Float) {
+        dragPos = (dragPos - dy / sheetTravel()).coerceIn(0f, 1f)
+    }
+    fun release(velocityY: Float, fling: Float) {
+        if (!sheetDragging) return
+        val open = when {
+            velocityY < -fling -> true
+            velocityY > fling -> false
+            else -> dragPos > 0.5f
+        }
+        settle(open && hasMini, -velocityY / sheetTravel())
+    }
+    // Drag on the dock.
     val dockDrag = Modifier.pointerInput(hasMini) {
         if (!hasMini) return@pointerInput
         val tracker = VelocityTracker()
-        val fling = 500.dp.toPx()
+        val fling = 400.dp.toPx()
         detectVerticalDragGestures(
             onDragStart = {
                 tracker.resetTracking()
-                npDrag = 0f
-                npDragDir = true
+                grab()
             },
-            onDragEnd = { releaseSheet(tracker.calculateVelocity().y, fling) },
-            onDragCancel = { releaseSheet(0f, fling) },
+            onDragEnd = { release(tracker.calculateVelocity().y, fling) },
+            onDragCancel = { release(0f, fling) },
         ) { change, dy ->
             change.consume()
             tracker.addPosition(change.uptimeMillis, change.position)
-            npDrag = (npDrag - dy).coerceAtLeast(0f)
+            dragBy(dy)
         }
     }
-    // On the open player: down pulls the sheet down 1:1, up opens the queue. This sits outside the
-    // sheet's slide, so the coordinates don't move with it. Lyrics scrolling consumes its own drags.
+    // On the sheet (sits outside its translation, so coordinates stay put): drags move the sheet,
+    // except a swipe up on the fully open player, which opens the queue. Lyrics scrolling and the
+    // seek bar consume their own drags.
     val sheetDrag = Modifier.pointerInput(Unit) {
         val tracker = VelocityTracker()
-        val fling = 500.dp.toPx()
+        val fling = 400.dp.toPx()
         val queueDistance = 28.dp.toPx()
         var total = 0f
-        var mode = 0 // 1 = pulling the sheet down, -1 = swiping up for the queue
+        var mode = 0 // 1 = moving the sheet, -1 = swiping up for the queue
         fun end(velocity: Float) {
-            if (mode == 1) releaseSheet(velocity, fling)
+            if (mode == 1) release(velocity, fling)
             else if (mode == -1 && (total < -queueDistance || velocity < -fling)) showQueue = true
             mode = 0
         }
@@ -293,13 +305,11 @@ private fun Library(container: AppContainer) {
             tracker.addPosition(change.uptimeMillis, change.position)
             total += dy
             if (mode == 0 && dy != 0f) {
-                mode = if (dy > 0f) 1 else -1
-                if (mode == 1) {
-                    npDrag = 0f
-                    npDragDir = false
-                }
+                val settledOpen = sheet.value == 1f && !sheet.isRunning
+                mode = if (dy < 0f && settledOpen) -1 else 1
+                if (mode == 1) grab()
             }
-            if (mode == 1) npDrag = total.coerceAtLeast(0f)
+            if (mode == 1) dragBy(dy)
         }
     }
 
@@ -376,7 +386,8 @@ private fun Library(container: AppContainer) {
                 visible = hasMini || showNavBar,
                 enter = slideInVertically { it },
                 exit = slideOutVertically { it },
-                modifier = Modifier.align(Alignment.BottomCenter),
+                // Hidden while the sheet is up: the sheet carries its own copy of the dock.
+                modifier = Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = if (sheetPos() > 0f) 0f else 1f },
             ) {
                 // One tone above the page; the tonal step alone separates it.
                 Surface(
@@ -396,7 +407,7 @@ private fun Library(container: AppContainer) {
                                 container = container,
                                 player = player,
                                 vm = vm,
-                                onClick = { nowPlayingOpen = true },
+                                onClick = { settle(true) },
                             )
                         }
                         AnimatedVisibility(
@@ -419,63 +430,71 @@ private fun Library(container: AppContainer) {
                 }
             }
 
-            // The sheet. Linear in play time on purpose: drags seek it 1:1, taps and releases ease
-            // the fraction (Motion.SheetSettle). It never goes lower than the dock's top edge.
+            // The sheet: dock-coloured, starting at the dock's top edge with a copy of the mini player
+            // that fades as the player fades in. The nav bar copy slides down out of the way.
             val backCorner = cornerDp(32.dp)
             val sheetColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            npTransition.AnimatedVisibility(
-                visible = { it },
-                enter = slideInVertically(tween(Motion.SheetMs, easing = LinearEasing)) { sheetTravel().roundToInt() },
-                exit = slideOutVertically(tween(Motion.SheetMs, easing = LinearEasing)) { sheetTravel().roundToInt() },
-                modifier = sheetDrag.graphicsLayer {
-                    val p = backProgress
-                    scaleX = 1f - 0.1f * p
-                    scaleY = 1f - 0.1f * p
-                    translationY = p * 48.dp.toPx()
-                    shape = RoundedCornerShape(backCorner * p)
-                    clip = p > 0f
-                },
-            ) {
-              // 0 = collapsed onto the dock, 1 = fully open. Same linear timing as the slide.
-              val open by transition.animateFloat(
-                  transitionSpec = { tween(Motion.SheetMs, easing = LinearEasing) },
-                  label = "sheetOpen",
-              ) { if (it == EnterExitState.Visible) 1f else 0f }
-              Box(
-                  Modifier
-                      .fillMaxSize()
-                      .graphicsLayer {
-                          // Starts with the dock's own corners and squares off as it opens.
-                          shape = RoundedCornerShape(topStart = dockCorner * (1f - open), topEnd = dockCorner * (1f - open))
-                          clip = open < 1f
-                      }
-                      .background(sheetColor),
-              ) {
-              Box(Modifier.fillMaxSize().graphicsLayer { alpha = ((open - 0.12f) / 0.45f).coerceIn(0f, 1f) }) {
-              CompositionLocalProvider(LocalAnimatedScope provides this@AnimatedVisibility) {
-                NowPlayingScreen(
-                    container = container,
-                    player = player,
-                    vm = vm,
-                    onCollapse = { nowPlayingOpen = false },
-                    onOpenAlbum = { id -> nowPlayingOpen = false; go("album/$id") },
-                    onOpenArtist = { name -> nowPlayingOpen = false; go("artist/${Uri.encode(container.library.mainArtist(name))}") },
-                    onEditTags = { id -> nowPlayingOpen = false; go("tags/$id") },
-                    showLyrics = showLyrics,
-                    onShowLyrics = { showLyrics = it },
-                    showQueue = showQueue,
-                    onShowQueue = { showQueue = it },
-                )
-              }
-              }
-              // The mini player rides on the sheet's top edge and fades out as it opens (Retro/Metro).
-              val miniAlpha = (1f - open / 0.2f).coerceIn(0f, 1f)
-              if (miniAlpha > 0f) {
-                  Box(Modifier.graphicsLayer { alpha = miniAlpha }) {
-                      MiniPlayer(container = container, player = player, vm = vm, onClick = {})
-                  }
-              }
-              }
+            if (sheetShown && hasMini) {
+                Box(
+                    sheetDrag.fillMaxSize().graphicsLayer {
+                        val p = backProgress
+                        scaleX = 1f - 0.1f * p
+                        scaleY = 1f - 0.1f * p
+                        translationY = p * 48.dp.toPx()
+                        shape = RoundedCornerShape(backCorner * p)
+                        clip = p > 0f
+                    },
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                val open = sheetPos()
+                                translationY = (1f - open) * sheetTravel()
+                                // Starts with the dock's own corners and squares off as it opens.
+                                val r = dockCorner.toPx() * (1f - open)
+                                shape = RoundedCornerShape(topStart = r, topEnd = r)
+                                clip = open < 1f
+                            }
+                            .background(sheetColor),
+                    ) {
+                        Box(Modifier.fillMaxSize().graphicsLayer { alpha = ((sheetPos() - 0.1f) / 0.4f).coerceIn(0f, 1f) }) {
+                            NowPlayingScreen(
+                                container = container,
+                                player = player,
+                                vm = vm,
+                                onCollapse = { settle(false) },
+                                onOpenAlbum = { id -> nowPlayingOpen = false; go("album/$id") },
+                                onOpenArtist = { name -> nowPlayingOpen = false; go("artist/${Uri.encode(container.library.mainArtist(name))}") },
+                                onEditTags = { id -> nowPlayingOpen = false; go("tags/$id") },
+                                showLyrics = showLyrics,
+                                onShowLyrics = { showLyrics = it },
+                                showQueue = showQueue,
+                                onShowQueue = { showQueue = it },
+                            )
+                        }
+                        val miniVisible by remember { derivedStateOf { sheetPos() < 0.25f } }
+                        if (miniVisible) {
+                            Box(Modifier.graphicsLayer { alpha = (1f - sheetPos() / 0.25f).coerceIn(0f, 1f) }) {
+                                MiniPlayer(container = container, player = player, vm = vm, onClick = {})
+                            }
+                        }
+                    }
+                    // The nav bar stays put under your finger's start and slides down as the sheet rises.
+                    if (showNavBar) {
+                        val navVisible by remember { derivedStateOf { sheetPos() < 0.5f } }
+                        if (navVisible) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .graphicsLayer { translationY = size.height * (sheetPos() * 2f).coerceAtMost(1f) }
+                                    .background(sheetColor),
+                            ) {
+                                AriaNavigationBar(selected = tab.takeIf { route == "home" }, onSelect = {})
+                            }
+                        }
+                    }
+                }
             }
 
             photoViewer?.let { (artist, bounds) ->

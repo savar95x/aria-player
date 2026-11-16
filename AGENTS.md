@@ -225,18 +225,21 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
 
 - Search bar: a pill at the top of home, in the original **lighter** style (not the darker
   "new" search bar).
-- Dock: mini player + nav bar in one surface, **no highlighted border/rim**. Dragging up on the dock
-  pulls now playing up 1:1 with the finger (seekable `npTransition` in AriaRoot; the sheet slides its full
-  height linearly over `Motion.SheetMs`, taps/releases ease the fraction with `Motion.SheetSettle`).
-  Modelled on Retro's sliding panel (owner pointed at github.com/RetroMusicPlayer/RetroMusicPlayer): an
-  **opaque sheet** (dock colour, dock corners squaring off) that starts collapsed at the dock's top edge
-  with a copy of the mini player on it; the copy fades out over the first 20% while the player fades in.
-  The sheet's top edge follows the finger **both ways**: drag the dock up to open, drag the player down
-  to close (`sheetDrag` sits on the AnimatedVisibility's own modifier, outside the slide, so its
-  coordinates don't move; swipe up there opens the queue, whose state is hoisted to AriaRoot). Release
-  past 25% or a flick commits. **No shared cover** with the mini player (it flew ahead of the finger).
+- Dock: mini player + nav bar in one surface, **no highlighted border/rim**. Now playing is a sheet
+  modelled on Retro's sliding panel (owner pointed at github.com/RetroMusicPlayer/RetroMusicPlayer and
+  compared screen recordings). One `Animatable` (`sheet`, 0 = collapsed onto the dock, 1 = open) drives it
+  in AriaRoot; while a finger is down, `dragPos` owns it outright. Rules the owner cares about:
+  the top edge stays under the finger **both ways**; you can **catch it mid-animation** and throw it
+  back; release goes the flick's way or to the nearer end, **carrying the flick's velocity**
+  (`Motion.SheetSpring`). The sheet is opaque, dock-coloured, starts at the dock's top edge with a
+  mini-player copy that fades out while the player fades in; a **nav-bar copy slides down** (not
+  vanish) over the first half. The real dock is hidden while the sheet is up. `sheetDrag` sits on the
+  untranslated outer Box so coordinates don't move; a swipe up on the fully settled player opens the
+  queue (state hoisted to AriaRoot). **No shared cover** with the mini player (it flew ahead of the
+  finger). Earlier tries that the owner rejected: a SeekableTransitionState seek (couldn't be caught
+  mid-animation, started below the dock, nav bar vanished).
   The dock's top corners are capped at the default 28dp (a rounder dock looked bloated); the covers
-  themselves follow the slider fully; swipe up inside now playing opens the queue.
+  themselves follow the slider fully.
 - Now playing bottom row: **Sleep** and **Queue** as text buttons (not icon-only). Lyrics lives in
   the ⋮ menu as plain text with no icon ("Lyrics" / "Hide lyrics").
 - Tapping the artist name on now playing (big view and lyrics header) opens the artist. The mini
