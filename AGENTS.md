@@ -238,6 +238,8 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
   queue (state hoisted to AriaRoot). **No shared cover** with the mini player (it flew ahead of the
   finger). Earlier tries that the owner rejected: a SeekableTransitionState seek (couldn't be caught
   mid-animation, started below the dock, nav bar vanished).
+  The Animatable and spring use `Motion.SheetThreshold` (0.0002): Compose's default 0.01 cutoff
+  snapped the last ~20px at the end of every open/close, which the owner saw as a frame drop.
   The dock's top corners are capped at the default 28dp (a rounder dock looked bloated); the covers
   themselves follow the slider fully.
 - Now playing bottom row: **Sleep** and **Queue** as text buttons (not icon-only). Lyrics lives in

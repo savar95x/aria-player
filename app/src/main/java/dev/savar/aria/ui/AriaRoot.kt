@@ -214,7 +214,8 @@ private fun Library(container: AppContainer) {
     // catch it mid-animation and throw it back); on release it springs to the nearer end, or the way
     // you flicked, carrying the flick's speed.
     val npTarget = nowPlayingOpen && hasMini
-    val sheet = remember { Animatable(if (npTarget) 1f else 0f) }
+    // Sub-pixel finish: the default 0.01 threshold ended every animation by snapping the last ~20px.
+    val sheet = remember { Animatable(if (npTarget) 1f else 0f, visibilityThreshold = Motion.SheetThreshold) }
     var sheetDragging by remember { mutableStateOf(false) }
     var dragPos by remember { mutableFloatStateOf(0f) }
     val sheetPos: () -> Float = { if (sheetDragging) dragPos else sheet.value }

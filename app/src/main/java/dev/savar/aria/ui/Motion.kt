@@ -37,7 +37,10 @@ object Motion {
     val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
     /** How the now-playing sheet finishes after a tap or a released drag (carries the flick's speed). */
-    val SheetSpring = spring<Float>(dampingRatio = 1f, stiffness = 420f)
+    val SheetSpring = spring(dampingRatio = 1f, stiffness = 420f, visibilityThreshold = SheetThreshold)
+
+    /** Sheet position is 0..1 over ~2000px, so stop only when the remainder is well under a pixel. */
+    const val SheetThreshold = 0.0002f
 
     /** Springy but settled: used for art flying between screens. */
     // Critically damped and stiffer: same glide, but no slow settling tail. Navigation counts a page
