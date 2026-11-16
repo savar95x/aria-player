@@ -264,7 +264,8 @@ private fun ZoomableImage(
                     scaleY = k
                     translationX = (source.center.x - w / 2f) * q
                     translationY = (source.center.y - h / 2f) * q + offsetY()
-                    shape = RoundedCornerShape(CornerSize((50f * q).coerceIn(0f, 50f)))
+                    // CornerSize(Float) is pixels: half the side = circle, easing to square corners.
+                    shape = RoundedCornerShape(CornerSize((side / 2f * q).coerceIn(0f, side / 2f)))
                     clip = p < 0.999f
                 },
         ) {
