@@ -14,6 +14,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.CompositionLocalProvider
 import dev.savar.aria.ui.LocalAnimatedScope
+import androidx.compose.animation.core.Transition
+import androidx.compose.animation.ExperimentalAnimationApi
 import dev.savar.aria.ui.Motion
 import dev.savar.aria.ui.sharedArt
 import dev.savar.aria.ui.verticalSwipe
@@ -141,12 +143,13 @@ private fun rememberTicker(active: Boolean): Long {
     return now
 }
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun MiniPlayer(
     container: AppContainer,
     player: PlayerUiState,
     vm: PlayerViewModel,
-    artVisible: Boolean,
+    npTransition: Transition<Boolean>,
     onClick: () -> Unit,
 ) {
     val meta = player.meta
@@ -166,7 +169,8 @@ fun MiniPlayer(
             ) {
                 // Fixed slot so the row doesn't reflow while the art flies up to the now-playing page.
                 Box(Modifier.size(48.dp)) {
-                    androidx.compose.animation.AnimatedVisibility(visible = artVisible, enter = fadeIn(), exit = fadeOut()) {
+                    // Same transition as the now-playing sheet, so the cover hands over while you drag.
+                    npTransition.AnimatedVisibility(visible = { !it }, enter = fadeIn(tween(120)), exit = fadeOut(tween(120))) {
                         CompositionLocalProvider(LocalAnimatedScope provides this) {
                             ArtImage(
                                 container.artFor(player.currentId)?.copy(sizePx = 160),

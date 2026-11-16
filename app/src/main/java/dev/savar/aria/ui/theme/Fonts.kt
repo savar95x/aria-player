@@ -43,7 +43,7 @@ fun typographyFor(font: String?, textScale: Float = 1f, weightDelta: Int = 0, le
     val base = Typography()
     val scale = TextScale * textScale
     // Material's defaults leave almost everything at Regular, so nothing stands out. Aria's hierarchy:
-    // headings SemiBold, primary text (song titles, row titles, buttons) Medium, secondary text Regular.
+    // headlines Bold, titles SemiBold, primary text (song titles, row titles, buttons) Medium, secondary text Regular.
     // The Weight setting shifts all of these together.
     fun TextStyle.f(weight: Int) = copy(
         fontFamily = family ?: fontFamily,
@@ -58,15 +58,15 @@ fun typographyFor(font: String?, textScale: Float = 1f, weightDelta: Int = 0, le
         } else letterSpacing.sp,
     )
     return Typography(
-        displayLarge = base.displayLarge.f(500),
-        displayMedium = base.displayMedium.f(500),
-        displaySmall = base.displaySmall.f(500),
-        headlineLarge = base.headlineLarge.f(600),
-        headlineMedium = base.headlineMedium.f(600),
-        headlineSmall = base.headlineSmall.f(600),
+        displayLarge = base.displayLarge.f(600),
+        displayMedium = base.displayMedium.f(600),
+        displaySmall = base.displaySmall.f(600),
+        headlineLarge = base.headlineLarge.f(700),
+        headlineMedium = base.headlineMedium.f(700),
+        headlineSmall = base.headlineSmall.f(700),
         titleLarge = base.titleLarge.f(600),
         titleMedium = base.titleMedium.f(500),
-        titleSmall = base.titleSmall.f(500),
+        titleSmall = base.titleSmall.f(600),
         bodyLarge = base.bodyLarge.f(500),
         bodyMedium = base.bodyMedium.f(400),
         bodySmall = base.bodySmall.f(400),

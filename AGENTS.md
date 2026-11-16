@@ -152,7 +152,8 @@ docs/                  README images (hero.png is a composite made with Pillow f
 `RoundedCornerShape(n.dp)` in UI code. Use `rounded(n.dp)` / `cornerDp(n.dp)` from
 `ui/theme/Corners.kt`. Material's own `Shapes` are scaled in `AriaTheme`. Artwork that morphs
 between screens (mini player ↔ now playing, album tile ↔ album page) uses `playerArtShape()` /
-`albumArtShape()`: the radius follows the item's size, so it eases during the shared-element
+`albumArtShape()`: the radius follows the item's size (the player cover's small end is capped at the
+default 12dp, so >100% roundness doesn't blob the mini-player cover), so it eases during the shared-element
 transition instead of snapping. Pills and circles (all Buttons, search bar, segmented buttons) use `pill()`: fully round at default, square at 0. Material's own buttons default to a fixed
 full shape, so always pass `shape = pill()` (or `ButtonDefaults.shapes(shape = pill())`). Inside
 `graphicsLayer {}` lambdas (not composable), compute the shape outside first.
@@ -189,8 +190,9 @@ sliders: size 0.8–1.3×, weight −300..+300, letter spacing −5..+5 px (smoo
 `typographyFor(font, textScale, weightDelta, letterSpacing)` in `ui/theme/Fonts.kt` builds the
 Typography; downloadable fonts request weights 100–900 so the weight slider works.
 Base weights are Aria's, not Material's (Material left nearly everything Regular, which the owner found
-unpolished): headings/titleLarge 600, display 500, primary text (bodyLarge, titleMedium/Small, labels) 500,
-secondary text (bodyMedium/Small) 400. Letter spacing defaults to **0** for every style (Material's +0.1..+0.5sp
+unpolished): headlines 700 (now-playing title, album/artist names), display/titleLarge/titleSmall 600,
+primary text (bodyLarge, titleMedium, labels) 500, secondary text (bodyMedium/Small) 400. The playing row
+uses the same weights as the others (only tint + equaliser mark mark it). Letter spacing defaults to **0** for every style (Material's +0.1..+0.5sp
 body/title tracking looked stretched and "eccentric" to the owner next to Metro/Musify); only the
 letter-spacing setting changes it. Prefer the style's weight over an explicit `fontWeight`, so
 the weight slider still applies. "Reset to
@@ -224,8 +226,10 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
 
 - Search bar: a pill at the top of home, in the original **lighter** style (not the darker
   "new" search bar).
-- Dock: mini player + nav bar in one surface, **no highlighted border/rim**. Swipe up on the dock
-  opens now playing; swipe up inside now playing opens the queue.
+- Dock: mini player + nav bar in one surface, **no highlighted border/rim**. Dragging up on the dock
+  pulls now playing up 1:1 with the finger (seekable `npTransition` in AriaRoot; the sheet slides its full
+  height linearly over `Motion.SheetMs`, taps/releases ease the fraction with `Motion.SheetSettle`; the
+  mini-player cover is a child of the same transition so the shared cover tracks the drag); swipe up inside now playing opens the queue.
 - Now playing bottom row: **Sleep** and **Queue** as text buttons (not icon-only). Lyrics lives in
   the ⋮ menu as plain text with no icon ("Lyrics" / "Hide lyrics").
 - Tapping the artist name on now playing (big view and lyrics header) opens the artist. The mini

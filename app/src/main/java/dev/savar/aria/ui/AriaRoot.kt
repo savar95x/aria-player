@@ -2,6 +2,14 @@ package dev.savar.aria.ui
 
 import dev.savar.aria.ui.theme.pill
 import kotlinx.coroutines.launch
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.animation.core.rememberTransition
@@ -143,7 +151,7 @@ fun AriaRoot(container: AppContainer) {
     }
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalAnimationApi::class)
 @Composable
 private fun Library(container: AppContainer) {
     val vm: PlayerViewModel = viewModel()
@@ -191,6 +199,55 @@ private fun Library(container: AppContainer) {
         nowPlayingOpen = true
     }
 
+    // Now playing is driven by a seekable transition, so dragging the dock moves it 1:1 with the
+    // finger (cover flying out of the mini player included); taps and releases animate the rest.
+    val npTarget = nowPlayingOpen && hasMini
+    val npState = remember { SeekableTransitionState(npTarget) }
+    val npTransition = rememberTransition(npState, label = "nowPlaying")
+    var npDragging by remember { mutableStateOf(false) }
+    var npDrag by remember { mutableFloatStateOf(0f) }
+    var rootHeight by remember { mutableIntStateOf(1) }
+    val npScope = rememberCoroutineScope()
+    LaunchedEffect(npTarget) {
+        if (!npDragging) npState.animateTo(npTarget, if (npTarget) Motion.SheetSettle else null)
+    }
+    LaunchedEffect(Unit) {
+        snapshotFlow { if (npDragging) npDrag else null }.collect { dist ->
+            if (dist == null) return@collect
+            if (npState.targetState != true) npState.seekTo(0f, targetState = true)
+            // The sheet slides its full height linearly over Motion.SheetMs, so this play-time
+            // fraction puts its top edge exactly under the finger.
+            val total = npTransition.totalDurationNanos.coerceAtLeast(1L)
+            val travel = (dist / rootHeight).coerceIn(0f, 1f)
+            npState.seekTo((travel * Motion.SheetMs * 1_000_000L / total).coerceIn(0f, 1f), targetState = true)
+        }
+    }
+    val dockDrag = Modifier.pointerInput(hasMini) {
+        if (!hasMini) return@pointerInput
+        val tracker = VelocityTracker()
+        val fling = 600.dp.toPx()
+        fun release() {
+            val velocity = tracker.calculateVelocity().y
+            val open = npDrag / rootHeight > 0.3f || velocity < -fling
+            npDragging = false
+            if (open && npDrag > 0f) nowPlayingOpen = true
+            else npScope.launch { npState.animateTo(false, Motion.SheetSettle) }
+        }
+        detectVerticalDragGestures(
+            onDragStart = {
+                tracker.resetTracking()
+                npDrag = 0f
+                npDragging = true
+            },
+            onDragEnd = { release() },
+            onDragCancel = { release() },
+        ) { change, dy ->
+            change.consume()
+            tracker.addPosition(change.uptimeMillis, change.position)
+            npDrag = (npDrag - dy).coerceAtLeast(0f)
+        }
+    }
+
     // Drag-back progress for the now-playing sheet (0 = open, 1 = fully pulled back).
     var backProgress by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(nowPlayingOpen) { if (nowPlayingOpen) backProgress = 0f }
@@ -198,7 +255,7 @@ private fun Library(container: AppContainer) {
     CompositionLocalProvider(LocalBottomPadding provides bottomPadding) {
       SharedTransitionLayout(Modifier.fillMaxSize()) {
        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
-        Box(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize().onSizeChanged { rootHeight = it.height.coerceAtLeast(1) }) {
             PageHost(pages, pageTransition, pageStates, Modifier.fillMaxSize()) { page ->
                     val r = page.route
                     when {
@@ -268,7 +325,7 @@ private fun Library(container: AppContainer) {
                 // One tone above the page; the tonal step alone separates it.
                 Surface(
                     // Swipe up anywhere on the dock (just above the home gesture) to open the player.
-                    modifier = if (hasMini) Modifier.verticalSwipe(onSwipeUp = { nowPlayingOpen = true }) else Modifier,
+                    modifier = dockDrag,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     shape = RoundedCornerShape(topStart = cornerDp(28.dp), topEnd = cornerDp(28.dp)),
                 ) {
@@ -282,7 +339,7 @@ private fun Library(container: AppContainer) {
                                 container = container,
                                 player = player,
                                 vm = vm,
-                                artVisible = !nowPlayingOpen,
+                                npTransition = npTransition,
                                 onClick = { nowPlayingOpen = true },
                             )
                         }
@@ -308,10 +365,11 @@ private fun Library(container: AppContainer) {
 
             // The page fades up while the artwork flies out of the mini player (shared element).
             val backCorner = cornerDp(32.dp)
-            AnimatedVisibility(
-                visible = nowPlayingOpen && hasMini,
-                enter = fadeIn(tween(260)) +
-                    slideInVertically(tween(420, easing = Motion.EmphasizedDecelerate)) { it / 6 },
+            npTransition.AnimatedVisibility(
+                visible = { it },
+                // Linear in play time on purpose: drags seek it 1:1; taps ease the fraction (SheetSettle).
+                enter = fadeIn(tween(Motion.SheetMs / 4, easing = LinearEasing)) +
+                    slideInVertically(tween(Motion.SheetMs, easing = LinearEasing)) { it },
                 exit = fadeOut(tween(220)) +
                     slideOutVertically(tween(260, easing = Motion.EmphasizedAccelerate)) { it / 6 },
                 modifier = Modifier.graphicsLayer {
