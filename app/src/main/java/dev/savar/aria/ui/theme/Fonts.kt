@@ -42,28 +42,31 @@ fun typographyFor(font: String?, textScale: Float = 1f, weightDelta: Int = 0, le
     val family = font?.let { googleFontFamily(it) }
     val base = Typography()
     val scale = TextScale * textScale
-    fun TextStyle.f() = copy(
+    // Material's defaults leave almost everything at Regular, so nothing stands out. Aria's hierarchy:
+    // headings SemiBold, primary text (song titles, row titles, buttons) Medium, secondary text Regular.
+    // The Weight setting shifts all of these together.
+    fun TextStyle.f(weight: Int) = copy(
         fontFamily = family ?: fontFamily,
         fontSize = fontSize * scale,
         lineHeight = if (lineHeight.isSpecified) lineHeight * scale else lineHeight,
-        fontWeight = FontWeight(((fontWeight ?: FontWeight.Normal).weight + weightDelta).coerceIn(100, 900)),
+        fontWeight = FontWeight((weight + weightDelta).coerceIn(100, 900)),
         letterSpacing = if (letterSpacing == 0f) this.letterSpacing else letterSpacing.sp,
     )
     return Typography(
-        displayLarge = base.displayLarge.f(),
-        displayMedium = base.displayMedium.f(),
-        displaySmall = base.displaySmall.f(),
-        headlineLarge = base.headlineLarge.f(),
-        headlineMedium = base.headlineMedium.f(),
-        headlineSmall = base.headlineSmall.f(),
-        titleLarge = base.titleLarge.f(),
-        titleMedium = base.titleMedium.f(),
-        titleSmall = base.titleSmall.f(),
-        bodyLarge = base.bodyLarge.f(),
-        bodyMedium = base.bodyMedium.f(),
-        bodySmall = base.bodySmall.f(),
-        labelLarge = base.labelLarge.f(),
-        labelMedium = base.labelMedium.f(),
-        labelSmall = base.labelSmall.f(),
+        displayLarge = base.displayLarge.f(500),
+        displayMedium = base.displayMedium.f(500),
+        displaySmall = base.displaySmall.f(500),
+        headlineLarge = base.headlineLarge.f(600),
+        headlineMedium = base.headlineMedium.f(600),
+        headlineSmall = base.headlineSmall.f(600),
+        titleLarge = base.titleLarge.f(600),
+        titleMedium = base.titleMedium.f(500),
+        titleSmall = base.titleSmall.f(500),
+        bodyLarge = base.bodyLarge.f(500),
+        bodyMedium = base.bodyMedium.f(400),
+        bodySmall = base.bodySmall.f(400),
+        labelLarge = base.labelLarge.f(500),
+        labelMedium = base.labelMedium.f(500),
+        labelSmall = base.labelSmall.f(500),
     )
 }

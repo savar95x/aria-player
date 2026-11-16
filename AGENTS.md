@@ -187,7 +187,11 @@ a 400ms debounce) froze the app or swallowed taps.
 `typeface` page: pinned search + category chips over a list of every Google Font), and Text style
 sliders: size 0.8–1.3×, weight −300..+300, letter spacing −5..+5 px (smooth, snaps to 0 near 0).
 `typographyFor(font, textScale, weightDelta, letterSpacing)` in `ui/theme/Fonts.kt` builds the
-Typography; downloadable fonts request weights 100–900 so the weight slider works. "Reset to
+Typography; downloadable fonts request weights 100–900 so the weight slider works.
+Base weights are Aria's, not Material's (Material left nearly everything Regular, which the owner found
+unpolished): headings/titleLarge 600, display 500, primary text (bodyLarge, titleMedium/Small, labels) 500,
+secondary text (bodyMedium/Small) 400. Prefer the style's weight over an explicit `fontWeight`, so
+the weight slider still applies. "Reset to
 defaults" lives in the ⋮ menu behind a confirmation dialog (the owner didn't want it one tap away).
 
 **Seek bar.** Holds at 0 until the new song's duration is known (otherwise it races to the end on skip).

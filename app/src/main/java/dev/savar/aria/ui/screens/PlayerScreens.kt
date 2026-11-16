@@ -187,7 +187,6 @@ fun MiniPlayer(
                         Text(
                             title,
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -390,7 +389,6 @@ fun NowPlayingScreen(
                 Text(
                     title,
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     modifier = Modifier.basicMarquee(),
                 )
