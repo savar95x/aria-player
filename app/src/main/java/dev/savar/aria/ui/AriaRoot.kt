@@ -2,6 +2,7 @@ package dev.savar.aria.ui
 
 import dev.savar.aria.ui.theme.pill
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.derivedStateOf
 import kotlinx.coroutines.Job
@@ -124,6 +125,9 @@ import dev.savar.aria.ui.screens.TagEditorScreen
 
 /** Extra bottom padding lists need so the mini player doesn't cover their last rows. */
 val LocalBottomPadding = compositionLocalOf { 0.dp }
+
+/** Measured height of the dock (mini player + nav bar) from the bottom of the screen; 0 when hidden. */
+val LocalDockInset = compositionLocalOf { 0.dp }
 
 @Composable
 fun AriaRoot(container: AppContainer) {
@@ -319,7 +323,10 @@ private fun Library(container: AppContainer) {
     var backProgress by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(nowPlayingOpen) { if (nowPlayingOpen) backProgress = 0f }
 
-    CompositionLocalProvider(LocalBottomPadding provides bottomPadding) {
+    val dockInset = with(LocalDensity.current) {
+        if ((hasMini || showNavBar) && dockTop > 0f) (rootHeight - dockTop).coerceAtLeast(0f).toDp() else 0.dp
+    }
+    CompositionLocalProvider(LocalBottomPadding provides bottomPadding, LocalDockInset provides dockInset) {
       SharedTransitionLayout(Modifier.fillMaxSize()) {
        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
         Box(Modifier.fillMaxSize().onSizeChanged { rootHeight = it.height.coerceAtLeast(1) }) {

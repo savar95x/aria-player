@@ -291,7 +291,8 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
   the fullest visible row, content padding included), pinned to exactly 0/1 via canScrollBackward/
   Forward; read in layout lambdas; dragging scrolls continuously with an offset. Earlier versions used
   integer indices, then the first item's size (header rows in the album grid made it jump) and ignored
-  the dock's bottom padding (thumb stopped short of the bottom).
+  the dock's bottom padding (thumb stopped short of the bottom). The track's bottom is the dock's
+  measured top edge (`LocalDockInset`), not `LocalBottomPadding` (a padded guess that left a gap).
 - Corner roundness doesn't yet reach the nav bar indicator, the fast scroller, or the widget (widget
   corners are fixed by design). Only change if the owner asks.
 - Artist photo cache stores 1000px images (for zoom). Fine for hundreds of artists. Add a

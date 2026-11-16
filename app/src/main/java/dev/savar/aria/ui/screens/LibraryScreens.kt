@@ -122,6 +122,7 @@ import dev.savar.aria.data.sortAlbums
 import dev.savar.aria.data.sortArtists
 import dev.savar.aria.data.sortSongs
 import dev.savar.aria.ui.LocalBottomPadding
+import dev.savar.aria.ui.LocalDockInset
 import dev.savar.aria.ui.PlayerUiState
 import dev.savar.aria.ui.PlayerViewModel
 import dev.savar.aria.ui.components.ArtImage
@@ -272,8 +273,9 @@ private fun SongsTab(
 @Composable
 private fun BoxScope.scrollerModifier(): Modifier = Modifier
     .align(Alignment.TopEnd)
-    .padding(top = 4.dp, bottom = LocalBottomPadding.current)
-    .navigationBarsPadding()
+    // Track runs to the visible bottom: the dock's top edge (measured), or the system nav bar without one.
+    .padding(top = 4.dp, bottom = LocalDockInset.current)
+    .then(if (LocalDockInset.current == 0.dp) Modifier.navigationBarsPadding() else Modifier)
 
 @Composable
 private fun <T : SortOption> SortMenu(sort: T, options: List<T>, onSort: (T) -> Unit) {
