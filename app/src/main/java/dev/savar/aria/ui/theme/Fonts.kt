@@ -50,7 +50,12 @@ fun typographyFor(font: String?, textScale: Float = 1f, weightDelta: Int = 0, le
         fontSize = fontSize * scale,
         lineHeight = if (lineHeight.isSpecified) lineHeight * scale else lineHeight,
         fontWeight = FontWeight((weight + weightDelta).coerceIn(100, 900)),
-        letterSpacing = if (letterSpacing == 0f) this.letterSpacing else letterSpacing.sp,
+        // Material spaces body/title/label text out (+0.1 to +0.5sp). With Medium weight that reads
+        // stretched and odd next to other players, which all use natural spacing. Default to 0
+        // (keeping Material's tighter tracking on the big display styles); the setting overrides.
+        letterSpacing = if (letterSpacing == 0f) {
+            if (this.letterSpacing.isSpecified && this.letterSpacing.value < 0f) this.letterSpacing else 0.sp
+        } else letterSpacing.sp,
     )
     return Typography(
         displayLarge = base.displayLarge.f(500),

@@ -190,7 +190,9 @@ sliders: size 0.8–1.3×, weight −300..+300, letter spacing −5..+5 px (smoo
 Typography; downloadable fonts request weights 100–900 so the weight slider works.
 Base weights are Aria's, not Material's (Material left nearly everything Regular, which the owner found
 unpolished): headings/titleLarge 600, display 500, primary text (bodyLarge, titleMedium/Small, labels) 500,
-secondary text (bodyMedium/Small) 400. Prefer the style's weight over an explicit `fontWeight`, so
+secondary text (bodyMedium/Small) 400. Letter spacing defaults to **0** for every style (Material's +0.1..+0.5sp
+body/title tracking looked stretched and "eccentric" to the owner next to Metro/Musify); only the
+letter-spacing setting changes it. Prefer the style's weight over an explicit `fontWeight`, so
 the weight slider still applies. "Reset to
 defaults" lives in the ⋮ menu behind a confirmation dialog (the owner didn't want it one tap away).
 
