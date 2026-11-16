@@ -152,8 +152,7 @@ docs/                  README images (hero.png is a composite made with Pillow f
 `RoundedCornerShape(n.dp)` in UI code. Use `rounded(n.dp)` / `cornerDp(n.dp)` from
 `ui/theme/Corners.kt`. Material's own `Shapes` are scaled in `AriaTheme`. Artwork that morphs
 between screens (mini player ↔ now playing, album tile ↔ album page) uses `playerArtShape()` /
-`albumArtShape()`: the radius follows the item's size (the player cover's small end is capped at the
-default 12dp, so >100% roundness doesn't blob the mini-player cover), so it eases during the shared-element
+`albumArtShape()`: the radius follows the item's size , so it eases during the shared-element
 transition instead of snapping. Pills and circles (all Buttons, search bar, segmented buttons) use `pill()`: fully round at default, square at 0. Material's own buttons default to a fixed
 full shape, so always pass `shape = pill()` (or `ButtonDefaults.shapes(shape = pill())`). Inside
 `graphicsLayer {}` lambdas (not composable), compute the shape outside first.
@@ -161,7 +160,7 @@ Exceptions the owner asked for: **artist photos are always circles** (`CircleSha
 the big **play/pause button** uses `playButtonCorner()`: unscaled Material morph (26dp paused ↔ 40dp
 playing) from 50% up, one fixed `26dp × scale` shape below 50% (a small-radius morph looked like a glitch).
 
-**Shared elements.** Keys: `now-playing-art`, `now-playing-art-mode` (big ↔ lyrics header),
+**Shared elements.** Keys: `now-playing-art-mode` (big ↔ lyrics header),
 `album-<id>`, `artist-<name>`. `sharedElement` remeasures content to the animated bounds.
 The artist photo viewer is **not** a Dialog (its window fade was the complaint): AriaRoot draws it over
 everything, and it does its own container transform from the header circle's `positionInRoot` bounds
@@ -228,8 +227,11 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
   "new" search bar).
 - Dock: mini player + nav bar in one surface, **no highlighted border/rim**. Dragging up on the dock
   pulls now playing up 1:1 with the finger (seekable `npTransition` in AriaRoot; the sheet slides its full
-  height linearly over `Motion.SheetMs`, taps/releases ease the fraction with `Motion.SheetSettle`; the
-  mini-player cover is a child of the same transition so the shared cover tracks the drag); swipe up inside now playing opens the queue.
+  height linearly over `Motion.SheetMs`, taps/releases ease the fraction with `Motion.SheetSettle`).
+  Modelled on Metro/Retro: an **opaque sheet** with the cover inside it, no fade and **no shared cover**
+  with the mini player (a shared cover flew ahead of the finger over the list; the owner rejected it).
+  The dock's top corners are capped at the default 28dp (a rounder dock looked bloated); the covers
+  themselves follow the slider fully; swipe up inside now playing opens the queue.
 - Now playing bottom row: **Sleep** and **Queue** as text buttons (not icon-only). Lyrics lives in
   the ⋮ menu as plain text with no icon ("Lyrics" / "Hide lyrics").
 - Tapping the artist name on now playing (big view and lyrics header) opens the artist. The mini

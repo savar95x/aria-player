@@ -2,6 +2,8 @@ package dev.savar.aria.ui
 
 import dev.savar.aria.ui.theme.pill
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.FastOutSlowInEasing
+import dev.savar.aria.ui.theme.LocalCornerScale
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -315,6 +317,7 @@ private fun Library(container: AppContainer) {
                     }
             }
 
+            val dockCorner = 28.dp * LocalCornerScale.current.coerceAtMost(1f)
             // One dock for mini player + nav bar: a single surface, so they read as one piece.
             AnimatedVisibility(
                 visible = hasMini || showNavBar,
@@ -327,7 +330,8 @@ private fun Library(container: AppContainer) {
                     // Swipe up anywhere on the dock (just above the home gesture) to open the player.
                     modifier = dockDrag,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = RoundedCornerShape(topStart = cornerDp(28.dp), topEnd = cornerDp(28.dp)),
+                    // Never rounder than default: past 100% the dock's top edge bulged into a big arc.
+                    shape = RoundedCornerShape(topStart = dockCorner, topEnd = dockCorner),
                 ) {
                     Column {
                         AnimatedVisibility(
@@ -368,10 +372,10 @@ private fun Library(container: AppContainer) {
             npTransition.AnimatedVisibility(
                 visible = { it },
                 // Linear in play time on purpose: drags seek it 1:1; taps ease the fraction (SheetSettle).
-                enter = fadeIn(tween(Motion.SheetMs / 4, easing = LinearEasing)) +
-                    slideInVertically(tween(Motion.SheetMs, easing = LinearEasing)) { it },
-                exit = fadeOut(tween(220)) +
-                    slideOutVertically(tween(260, easing = Motion.EmphasizedAccelerate)) { it / 6 },
+                // An opaque sheet sliding its full height, like Metro/Retro: no fade, so it never shows
+                // the list through it.
+                enter = slideInVertically(tween(Motion.SheetMs, easing = LinearEasing)) { it },
+                exit = slideOutVertically(tween(320, easing = FastOutSlowInEasing)) { it },
                 modifier = Modifier.graphicsLayer {
                     val p = backProgress
                     scaleX = 1f - 0.1f * p

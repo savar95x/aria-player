@@ -127,7 +127,6 @@ import dev.savar.aria.ui.components.ArtImage
 import dev.savar.aria.ui.components.formatDuration
 import kotlinx.coroutines.delay
 
-private const val NowPlayingArtKey = "now-playing-art"
 private const val ModeArtKey = "now-playing-art-mode"
 
 private fun AppContainer.artFor(id: Long?): SongArt? =
@@ -174,7 +173,7 @@ fun MiniPlayer(
                         CompositionLocalProvider(LocalAnimatedScope provides this) {
                             ArtImage(
                                 container.artFor(player.currentId)?.copy(sizePx = 160),
-                                Modifier.sharedArt(NowPlayingArtKey).fillMaxSize(),
+                                Modifier.fillMaxSize(),
                                 playerArtShape(),
                             )
                         }
@@ -324,7 +323,9 @@ fun NowPlayingScreen(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 label = "lyricsMode",
             ) { lyricsMode ->
-            val artKey = if (lyricsMode == showLyrics) Modifier.sharedArt(NowPlayingArtKey) else Modifier
+            // No shared cover with the mini player any more: the cover rides up inside the sheet (like
+            // Metro/Retro), so it stays under your finger instead of flying ahead of it.
+            val artKey = Modifier
             // The cover itself morphs between the big view and the small lyrics header.
             val modeArt = Modifier.sharedArt(ModeArtKey, scope = this)
             if (lyricsMode) {

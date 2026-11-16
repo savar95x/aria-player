@@ -69,17 +69,9 @@ private data class SizeMorphShape(val stops: List<Pair<Float, Float>>) : Shape {
     }
 }
 
-/**
- * Now-playing cover: 12dp in the mini player / lyrics header, 28dp full size. The small end never
- * goes rounder than default: past 100% a 48dp cover turned into a blob next to the mini player text.
- */
+/** Now-playing cover: 12dp in the mini player / lyrics header, 28dp full size. */
 @Composable
-fun playerArtShape(): Shape {
-    val scale = LocalCornerScale.current
-    return remember(scale) {
-        SizeMorphShape(listOf(52f to 12f * scale.coerceAtMost(1f), 280f to 28f * scale))
-    }
-}
+fun playerArtShape(): Shape = morphingRounded(52.dp to 12.dp, 280.dp to 28.dp)
 
 /** Album cover: 12dp in rows, 18dp as a grid tile, 24dp on the album page. */
 @Composable
