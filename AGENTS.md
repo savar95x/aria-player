@@ -228,8 +228,13 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
 - Dock: mini player + nav bar in one surface, **no highlighted border/rim**. Dragging up on the dock
   pulls now playing up 1:1 with the finger (seekable `npTransition` in AriaRoot; the sheet slides its full
   height linearly over `Motion.SheetMs`, taps/releases ease the fraction with `Motion.SheetSettle`).
-  Modelled on Metro/Retro: an **opaque sheet** with the cover inside it, no fade and **no shared cover**
-  with the mini player (a shared cover flew ahead of the finger over the list; the owner rejected it).
+  Modelled on Retro's sliding panel (owner pointed at github.com/RetroMusicPlayer/RetroMusicPlayer): an
+  **opaque sheet** (dock colour, dock corners squaring off) that starts collapsed at the dock's top edge
+  with a copy of the mini player on it; the copy fades out over the first 20% while the player fades in.
+  The sheet's top edge follows the finger **both ways**: drag the dock up to open, drag the player down
+  to close (`sheetDrag` sits on the AnimatedVisibility's own modifier, outside the slide, so its
+  coordinates don't move; swipe up there opens the queue, whose state is hoisted to AriaRoot). Release
+  past 25% or a flick commits. **No shared cover** with the mini player (it flew ahead of the finger).
   The dock's top corners are capped at the default 28dp (a rounder dock looked bloated); the covers
   themselves follow the slider fully; swipe up inside now playing opens the queue.
 - Now playing bottom row: **Sleep** and **Queue** as text buttons (not icon-only). Lyrics lives in

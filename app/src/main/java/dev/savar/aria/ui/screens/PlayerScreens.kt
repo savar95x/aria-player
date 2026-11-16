@@ -148,7 +148,6 @@ fun MiniPlayer(
     container: AppContainer,
     player: PlayerUiState,
     vm: PlayerViewModel,
-    npTransition: Transition<Boolean>,
     onClick: () -> Unit,
 ) {
     val meta = player.meta
@@ -168,16 +167,11 @@ fun MiniPlayer(
             ) {
                 // Fixed slot so the row doesn't reflow while the art flies up to the now-playing page.
                 Box(Modifier.size(48.dp)) {
-                    // Same transition as the now-playing sheet, so the cover hands over while you drag.
-                    npTransition.AnimatedVisibility(visible = { !it }, enter = fadeIn(tween(120)), exit = fadeOut(tween(120))) {
-                        CompositionLocalProvider(LocalAnimatedScope provides this) {
-                            ArtImage(
-                                container.artFor(player.currentId)?.copy(sizePx = 160),
-                                Modifier.fillMaxSize(),
-                                playerArtShape(),
-                            )
-                        }
-                    }
+                    ArtImage(
+                        container.artFor(player.currentId)?.copy(sizePx = 160),
+                        Modifier.fillMaxSize(),
+                        playerArtShape(),
+                    )
                 }
                 Spacer(Modifier.width(12.dp))
                 AnimatedContent(
@@ -247,12 +241,13 @@ fun NowPlayingScreen(
     onEditTags: (Long) -> Unit,
     showLyrics: Boolean,
     onShowLyrics: (Boolean) -> Unit,
+    showQueue: Boolean,
+    onShowQueue: (Boolean) -> Unit,
 ) {
     val meta = player.meta
     val art = container.artFor(player.currentId)
     val accent = rememberArtColor(art)
     val bg = MaterialTheme.colorScheme.background
-    var showQueue by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     val sleep by vm.sleep.collectAsStateWithLifecycle()
     val now = rememberTicker(sleep.active)
@@ -286,10 +281,9 @@ fun NowPlayingScreen(
             .fillMaxSize()
             .background(bg)
             .background(Brush.verticalGradient(0f to accent.copy(alpha = 0.42f), 0.75f to bg))
-            // Swallow taps so they don't reach the library underneath; drag down to collapse.
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-            // Down collapses the player; up opens the queue.
-            .verticalSwipe(onSwipeUp = { showQueue = true }, onSwipeDown = onCollapse),
+            // Swallow taps so they don't reach the library underneath. Drags (down to pull the
+            // sheet, up for the queue) are handled around the sheet in AriaRoot.
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
     ) {
         Column(
             Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp),
@@ -422,7 +416,7 @@ fun NowPlayingScreen(
                     Spacer(Modifier.width(8.dp))
                     Text(if (sleep.active) sleepLabel(sleep, now) else "Sleep")
                 }
-                TextButton(shape = pill(), onClick = { showQueue = true }) {
+                TextButton(shape = pill(), onClick = { onShowQueue(true) }) {
                     Icon(Icons.AutoMirrored.Outlined.QueueMusic, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Queue")
@@ -442,7 +436,7 @@ fun NowPlayingScreen(
             loader.enqueue(ImageRequest.Builder(prefetchContext).data(art).size(160).build())
         }
     }
-    if (showQueue) QueueSheet(player, vm, artFor = { id -> container.artFor(id)?.copy(sizePx = 160) }) { showQueue = false }
+    if (showQueue) QueueSheet(player, vm, artFor = { id -> container.artFor(id)?.copy(sizePx = 160) }) { onShowQueue(false) }
     if (showSleep) SleepTimerSheet(vm) { showSleep = false }
 }
 
