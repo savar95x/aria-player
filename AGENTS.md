@@ -132,15 +132,16 @@ app/src/main/java/dev/savar/aria/
     WidgetActionReceiver  widget buttons -> player (direct call if running, else MediaController)
   ui/
     Pages.kt           Own navigator: back stack, PageHost, transitions (see Navigation below)
-    AriaRoot.kt        Routes + Pages (own navigator, see Pages.kt), dock (mini player + ShortNavigationBar), now-playing overlay with
-                       predictive back, lyrics state (back closes lyrics first)
+    AriaRoot.kt        Routes, dock (mini player + ShortNavigationBar), drawing of the now-playing sheet,
+                       predictive back, lyrics state (back closes lyrics first), artist photo viewer overlay
+    PlayerSheet.kt     Now-playing sheet state (PlayerSheetState) + its gestures (dockDrag, sheetDrag)
     PlayerViewModel    MediaController wrapper; physical shuffle (reorders the real queue around the
                        current item, keeps the original order for un-shuffle)
-    Motion.kt          Motion tokens, sharedArt/sharedContainer helpers, verticalSwipe
+    Motion.kt          Motion tokens, sharedArt/sharedContainer helpers
     theme/             Theme (Expressive), Fonts (downloadable Google Fonts; catalogue in data/FontCatalog), Corners
     components/        ArtImage, ArtistImage, SongRow, FastScroller...
-    screens/           Library (home tabs, album, artist, search), Player (now playing, mini player,
-                       seek bar), QueueSheet, LyricsPane, TagEditor, Settings, Fonts (font page +
+    screens/           HomeScreen (tabs, song/album/artist lists, sort menus), AlbumArtistScreens,
+                       SearchScreen, PlayerScreens (now playing, mini player, seek bar), QueueSheet, LyricsPane, TagEditor, Settings, Fonts (font page +
                        Typeface picker), ArtistPhotoViewer
 tools/verify_apk.py    Static APK checks (see Building)
 docs/                  README images (hero.png is a composite made with Pillow from docs/screenshots)
@@ -211,6 +212,12 @@ stopped working) and Glance adds nothing we need. Keep the receiver class name
 It reads each widget's real sizes (`OPTION_APPWIDGET_SIZES`) and builds one layout per size, setting
 the 4x2 cover's size in code (`setViewLayoutWidth/Height`). Don't rely on `adjustViewBounds`: the first
 RemoteViews version did and letterboxed the cover. Bitmaps go over binder, so keep the cover ≤ 400px.
+The widget must never be wrong or blank (owner: "it shouldn't be wrong anytime"). Safety nets:
+`WidgetState` serialises updates and snapshots the last song; `AriaWidgetReceiver` redraws on app
+update (`MY_PACKAGE_REPLACED`), reboot and every APPWIDGET_UPDATE; while playing, `PlaybackService`
+keeps a 90s **watchdog alarm** pushed out (`AriaWidget.armWatchdog`), so if OxygenOS kills the process
+without onDestroy the alarm fires and flips the stale pause icon back to play. "Playing" for the
+widget is isPlaying or playWhenReady while READY/BUFFERING (playWhenReady alone stayed true at queue end).
 
 **Artist photos.** Automatic pick = Deezer search with `artist:"X" album:"<one of your albums>"`, then
 the most-followed exact-name match. Exact name or nothing. Deezer's grey placeholder (empty hash or
@@ -228,7 +235,7 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
 - Dock: mini player + nav bar in one surface, **no highlighted border/rim**. Now playing is a sheet
   modelled on Retro's sliding panel (owner pointed at github.com/RetroMusicPlayer/RetroMusicPlayer and
   compared screen recordings). One `Animatable` (`sheet`, 0 = collapsed onto the dock, 1 = open) drives it
-  in AriaRoot; while a finger is down, `dragPos` owns it outright. Rules the owner cares about:
+  (`PlayerSheetState` in PlayerSheet.kt); while a finger is down, `dragPos` owns it outright. Rules the owner cares about:
   the top edge stays under the finger **both ways**; you can **catch it mid-animation** and throw it
   back; release goes the flick's way or to the nearer end, **carrying the flick's velocity**
   (`Motion.SheetSpring`). The sheet is opaque, dock-coloured, starts at the dock's top edge with a
