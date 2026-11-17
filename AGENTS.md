@@ -234,7 +234,10 @@ battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new i
   (`Motion.SheetSpring`). The sheet is opaque, dock-coloured, starts at the dock's top edge with a
   mini-player copy that fades out while the player fades in; a **nav-bar copy slides down** (not
   vanish) over the first half. The real dock is hidden while the sheet is up. `sheetDrag` sits on the
-  untranslated outer Box so coordinates don't move; a swipe up on the fully settled player opens the
+  **translated** sheet so its touch area falls with it (above the top edge the list is live at once,
+  even mid-animation, like Retro); it converts positions to screen space with `localToRoot` because
+  local coordinates move with the sheet. Touching a moving sheet catches it; tapping the falling
+  mini-player copy reopens; a swipe up on the fully settled player opens the
   queue (state hoisted to AriaRoot). **No shared cover** with the mini player (it flew ahead of the
   finger). Earlier tries that the owner rejected: a SeekableTransitionState seek (couldn't be caught
   mid-animation, started below the dock, nav bar vanished).

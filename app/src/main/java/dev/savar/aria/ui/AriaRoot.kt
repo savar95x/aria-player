@@ -2,6 +2,11 @@ package dev.savar.aria.ui
 
 import dev.savar.aria.ui.theme.pill
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.LayoutCoordinates
+import kotlin.math.abs
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.derivedStateOf
@@ -284,19 +289,57 @@ private fun Library(container: AppContainer) {
             dragBy(dy)
         }
     }
-    // On the sheet (sits outside its translation, so coordinates stay put): drags move the sheet,
-    // except a swipe up on the fully open player, which opens the queue. Lyrics scrolling and the
-    // seek bar consume their own drags.
-    val sheetDrag = Modifier.pointerInput(Unit) {
-        val tracker = VelocityTracker()
-        val fling = 400.dp.toPx()
-        val queueDistance = 28.dp.toPx()
-        var total = 0f
-        var mode = 0 // 1 = moving the sheet, -1 = swiping up for the queue
-        fun end(velocity: Float) {
-            if (mode == 1) release(velocity, fling)
-            else if (mode == -1 && (total < -queueDistance || velocity < -fling)) showQueue = true
-            mode = 0
+    // On the sheet itself. It sits on the moving (translated) sheet, so its touch area falls with it:
+    // above the sheet's top edge the list underneath is live straight away, even mid-animation.
+    // Positions are converted to screen space, because local coordinates move with the sheet.
+    // Touching a moving sheet catches it; drags move it, except a swipe up on the settled open player
+    // (queue). Lyrics scrolling and the seek bar consume their own drags.
+    val sheetCoords = remember { arrayOfNulls<LayoutCoordinates>(1) }
+    val sheetDrag = Modifier
+        .onGloballyPositioned { sheetCoords[0] = it }
+        .pointerInput(Unit) {
+            val fling = 400.dp.toPx()
+            val queueDistance = 28.dp.toPx()
+            val slop = viewConfiguration.touchSlop
+            fun screenY(p: Offset): Float = sheetCoords[0]?.takeIf { it.isAttached }?.localToRoot(p)?.y ?: p.y
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                val tracker = VelocityTracker()
+                val startY = screenY(down.position)
+                var lastY = startY
+                val caught = sheet.isRunning || settleJob[0]?.isActive == true
+                var mode = if (caught) 1 else 0 // 1 = moving the sheet, -1 = swiping up for the queue
+                if (caught) grab()
+                tracker.addPosition(down.uptimeMillis, Offset(0f, startY))
+                while (true) {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                    val y = screenY(change.position)
+                    if (!change.pressed) break
+                    // A child (lyrics list, seek bar) took this drag before we claimed it.
+                    if (mode == 0 && change.isConsumed) return@awaitEachGesture
+                    val dy = y - lastY
+                    lastY = y
+                    if (mode == 0 && abs(y - startY) > slop) {
+                        val settledOpen = sheet.value >= 1f && !sheet.isRunning
+                        mode = if (y < startY && settledOpen) -1 else 1
+                        if (mode == 1) grab()
+                    }
+                    if (mode != 0) {
+                        change.consume()
+                        tracker.addPosition(change.uptimeMillis, Offset(0f, y))
+                        if (mode == 1) dragBy(dy)
+                    }
+                }
+                val velocity = tracker.calculateVelocity().y
+                when {
+                    // A tap on the falling mini player: its click already started reopening (grab()
+                    // cancelled any earlier settle, so an active one is the click's).
+                    mode == 1 && settleJob[0]?.isActive == true -> Unit
+                    mode == 1 -> release(velocity, fling)
+                    mode == -1 && (lastY - startY < -queueDistance || velocity < -fling) -> showQueue = true
+                }
+            }
         }
         detectVerticalDragGestures(
             onDragStart = {
@@ -445,7 +488,7 @@ private fun Library(container: AppContainer) {
             val sheetColor = MaterialTheme.colorScheme.surfaceContainerHigh
             if (sheetShown && hasMini) {
                 Box(
-                    sheetDrag.fillMaxSize().graphicsLayer {
+                    Modifier.fillMaxSize().graphicsLayer {
                         val p = backProgress
                         scaleX = 1f - 0.1f * p
                         scaleY = 1f - 0.1f * p
@@ -465,6 +508,7 @@ private fun Library(container: AppContainer) {
                                 shape = RoundedCornerShape(topStart = r, topEnd = r)
                                 clip = open < 1f
                             }
+                            .then(sheetDrag)
                             .background(sheetColor),
                     ) {
                         Box(Modifier.fillMaxSize().graphicsLayer { alpha = ((sheetPos() - 0.1f) / 0.4f).coerceIn(0f, 1f) }) {
@@ -485,7 +529,7 @@ private fun Library(container: AppContainer) {
                         val miniVisible by remember { derivedStateOf { sheetPos() < 0.25f } }
                         if (miniVisible) {
                             Box(Modifier.graphicsLayer { alpha = (1f - sheetPos() / 0.25f).coerceIn(0f, 1f) }) {
-                                MiniPlayer(container = container, player = player, vm = vm, onClick = {})
+                                MiniPlayer(container = container, player = player, vm = vm, onClick = { settle(true) })
                             }
                         }
                     }
