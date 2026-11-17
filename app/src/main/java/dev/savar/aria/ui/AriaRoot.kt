@@ -341,26 +341,6 @@ private fun Library(container: AppContainer) {
                 }
             }
         }
-        detectVerticalDragGestures(
-            onDragStart = {
-                tracker.resetTracking()
-                total = 0f
-                mode = 0
-            },
-            onDragEnd = { end(tracker.calculateVelocity().y) },
-            onDragCancel = { end(0f) },
-        ) { change, dy ->
-            change.consume()
-            tracker.addPosition(change.uptimeMillis, change.position)
-            total += dy
-            if (mode == 0 && dy != 0f) {
-                val settledOpen = sheet.value == 1f && !sheet.isRunning
-                mode = if (dy < 0f && settledOpen) -1 else 1
-                if (mode == 1) grab()
-            }
-            if (mode == 1) dragBy(dy)
-        }
-    }
 
     // Drag-back progress for the now-playing sheet (0 = open, 1 = fully pulled back).
     var backProgress by remember { mutableFloatStateOf(0f) }
