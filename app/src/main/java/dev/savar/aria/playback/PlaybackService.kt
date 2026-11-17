@@ -171,7 +171,8 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    private fun pushWidget() {
+    /** Sends the player's real state to the widget (also used to reconcile after widget taps). */
+    fun pushWidget() {
         WidgetUpdateReceiver.send(this, player.currentMediaItem, player.mediaMetadata, player.isPlaying || player.playWhenReady)
     }
 

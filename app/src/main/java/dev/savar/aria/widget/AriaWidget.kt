@@ -12,6 +12,8 @@ import android.util.SizeF
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
+import android.util.Log
+import androidx.core.graphics.scale
 import dev.savar.aria.MainActivity
 import dev.savar.aria.R
 import dev.savar.aria.container
@@ -35,8 +37,8 @@ class AriaWidgetReceiver : AppWidgetProvider() {
         val pending = goAsync()
         context.container.scope.launch {
             try {
-                WidgetState.ensureLoaded(context)
-                AriaWidget.render(context)
+                // Added, resized or the system asked: redraw from the latest state, fixing anything stale.
+                WidgetState.refresh(context)
             } finally {
                 pending.finish()
             }
@@ -49,14 +51,30 @@ object AriaWidget {
     private const val WIDE_MIN_WIDTH = 220f
     private const val TALL_MIN_HEIGHT = 230f
 
+    fun hasWidgets(context: Context): Boolean = widgetIds(context.applicationContext).isNotEmpty()
+
+    private fun widgetIds(app: Context): IntArray =
+        AppWidgetManager.getInstance(app).getAppWidgetIds(ComponentName(app, AriaWidgetReceiver::class.java))
+
     fun render(context: Context, data: WidgetState.Data = WidgetState.data.value ?: WidgetState.Data()) {
         val app = context.applicationContext
         val manager = AppWidgetManager.getInstance(app)
-        val ids = manager.getAppWidgetIds(ComponentName(app, AriaWidgetReceiver::class.java))
-        for (id in ids) {
-            // One layout per size the widget actually has (portrait / landscape), measured exactly.
-            val views = RemoteViews(sizesOf(manager, id).associateWith { build(app, it, data) })
-            runCatching { manager.updateAppWidget(id, views) }
+        for (id in widgetIds(app)) {
+            val sizes = sizesOf(manager, id)
+            // Bitmaps travel over binder. If an update is ever rejected (too large, launcher hiccup),
+            // retry lighter rather than leaving the widget on stale content: smaller cover, then no
+            // images at all. Titles and the play/pause state must always get through.
+            val attempts = listOf(
+                data,
+                data.copy(art = data.art?.let { it.scale(200, 200, filter = true) }, backdrop = null),
+                data.copy(art = null, backdrop = null),
+            )
+            for (attempt in attempts) {
+                // One layout per size the widget actually has (portrait / landscape), measured exactly.
+                val sent = runCatching { manager.updateAppWidget(id, RemoteViews(sizes.associateWith { build(app, it, attempt) })) }
+                if (sent.isSuccess) break
+                Log.w("AriaWidget", "Widget update failed, retrying lighter", sent.exceptionOrNull())
+            }
         }
     }
 

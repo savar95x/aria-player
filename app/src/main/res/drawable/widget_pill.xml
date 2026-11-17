@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Play button body; tinted per song with setColorFilter. -->
+<!-- Play button body: a white pill. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <solid android:color="#FFFFFFFF" />
     <corners android:radius="999dp" />

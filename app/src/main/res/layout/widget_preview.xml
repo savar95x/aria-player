@@ -1,24 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Shown in the launcher's widget picker. Mirrors the real 4x2 layout. -->
+<!--
+  Shown in the launcher's widget picker. A copy of widget_wide in its idle state, with the same
+  drawables, sizes and text styles, so what you pick is exactly what lands on the home screen.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_preview_bg"
+    android:background="@drawable/widget_bg"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:padding="14dp">
 
-    <FrameLayout
+    <ImageView
         android:layout_width="96dp"
         android:layout_height="96dp"
-        android:background="@drawable/widget_preview_art">
-
-        <ImageView
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_gravity="center"
-            android:src="@drawable/ic_note" />
-    </FrameLayout>
+        android:background="@drawable/widget_art_shape"
+        android:clipToOutline="true"
+        android:scaleType="centerCrop"
+        android:src="@drawable/widget_art_placeholder" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -28,40 +27,45 @@
         android:orientation="vertical">
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:maxLines="1"
-            android:text="Aria"
-            android:textColor="#FFFFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:maxLines="1"
-            android:text="Now playing"
-            android:textColor="#B3FFFFFF"
-            android:textSize="13sp" />
-
-        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:singleLine="true"
+            android:text="Aria"
+            android:textColor="#FFFFFFFF"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="Tap to open"
+            android:textColor="#B8FFFFFF"
+            android:textSize="12sp" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="10dp" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <ImageView
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:padding="6dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:padding="7dp"
                 android:src="@drawable/ic_previous" />
 
             <FrameLayout
-                android:layout_width="56dp"
+                android:layout_width="60dp"
                 android:layout_height="44dp"
                 android:layout_marginHorizontal="6dp"
-                android:background="@drawable/widget_preview_pill">
+                android:background="@drawable/widget_pill">
 
                 <ImageView
                     android:layout_width="26dp"
@@ -72,9 +76,9 @@
             </FrameLayout>
 
             <ImageView
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:padding="6dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:padding="7dp"
                 android:src="@drawable/ic_next" />
         </LinearLayout>
     </LinearLayout>

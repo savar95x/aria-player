@@ -17,6 +17,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import dev.savar.aria.widget.AriaWidget
+import dev.savar.aria.widget.WidgetState
 
 class AriaApp : Application(), SingletonImageLoader.Factory {
     /** Lazy: the player process only touches the bits it needs (saved queue), never settings/library. */
@@ -26,6 +29,15 @@ class AriaApp : Application(), SingletonImageLoader.Factory {
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
         CrashActivity.install(this)
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        // A killed process can't tell the widget it stopped playing; whenever the app comes back
+        // (UI, service or a widget tap), redraw it from the truth. Not in the crash-screen process.
+        if (!getProcessName().endsWith(":crash")) {
+            container.scope.launch { if (AriaWidget.hasWidgets(this@AriaApp)) WidgetState.refresh(this@AriaApp) }
+        }
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader =

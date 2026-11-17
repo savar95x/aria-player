@@ -30,21 +30,26 @@ class WidgetActionReceiver : BroadcastReceiver() {
                 val running = PlaybackService.instance
                 if (running != null) {
                     running.perform(action)
-                    return@launch
+                } else {
+                    // Cold start: connecting creates the service, which restores the last queue first.
+                    val token = SessionToken(app, ComponentName(app, PlaybackService::class.java))
+                    val controller = runCatching { MediaController.Builder(app, token).buildAsync().await() }.getOrNull()
+                    if (controller != null) {
+                        runCatching {
+                            controller.sendCustomCommand(
+                                Remote.command(Remote.ACTION),
+                                Bundle().apply { putString(Remote.ARG_ACTION, action.name) },
+                            ).await()
+                        }
+                        // Hold the binding until playback has promoted the service to the foreground.
+                        delay(3_000)
+                        controller.release()
+                    }
                 }
-                // Cold start: connecting creates the service, which restores the last queue first.
-                val token = SessionToken(app, ComponentName(app, PlaybackService::class.java))
-                val controller = runCatching { MediaController.Builder(app, token).buildAsync().await() }.getOrNull()
-                    ?: return@launch
-                runCatching {
-                    controller.sendCustomCommand(
-                        Remote.command(Remote.ACTION),
-                        Bundle().apply { putString(Remote.ARG_ACTION, action.name) },
-                    ).await()
-                }
-                // Hold the binding until playback has promoted the service to the foreground.
-                delay(3_000)
-                controller.release()
+                // Reconcile: if the tap changed nothing (empty queue, player refused, service never
+                // came up), the optimistic icon would otherwise stay wrong.
+                delay(1_200)
+                PlaybackService.instance?.pushWidget() ?: WidgetState.refresh(app)
             } finally {
                 pending.finish()
             }
