@@ -2,12 +2,9 @@
 
 package dev.savar.aria.ui
 
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.SizeTransform
@@ -17,19 +14,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.unit.dp
 
 /** Material 3 motion tokens. */
 object Motion {
@@ -42,27 +33,10 @@ object Motion {
     /** Sheet position is 0..1 over ~2000px, so stop only when the remainder is well under a pixel. */
     const val SheetThreshold = 0.0002f
 
-    /** Springy but settled: used for art flying between screens. */
+    /** Art flying between screens (shared elements). */
     // Critically damped and stiffer: same glide, but no slow settling tail. Navigation counts a page
     // as "still animating" until its shared artwork stops, and a back swipe can't preview until then.
     val ArtBounds = BoundsTransform { _: Rect, _: Rect -> spring(dampingRatio = 1f, stiffness = 1000f) }
-
-    // Shared X-axis: the new screen slides in a little and fades up; the old one drifts the other way.
-    private const val Shift = 10
-
-    val Enter: AnimatedContentTransitionScope<*>.() -> EnterTransition = {
-        slideInHorizontally(tween(300, easing = EmphasizedDecelerate)) { it / Shift } + fadeIn(tween(180))
-    }
-    val Exit: AnimatedContentTransitionScope<*>.() -> ExitTransition = {
-        slideOutHorizontally(tween(200, easing = EmphasizedAccelerate)) { -it / Shift } + fadeOut(tween(100))
-    }
-    // Going back should feel instant: no delay, shorter curve.
-    val PopEnter: AnimatedContentTransitionScope<*>.() -> EnterTransition = {
-        slideInHorizontally(tween(240, easing = EmphasizedDecelerate)) { -it / Shift } + fadeIn(tween(150))
-    }
-    val PopExit: AnimatedContentTransitionScope<*>.() -> ExitTransition = {
-        slideOutHorizontally(tween(180, easing = EmphasizedAccelerate)) { it / Shift } + fadeOut(tween(90))
-    }
 
     /** Fade-through for switching bottom-nav destinations. */
     fun fadeThrough(): ContentTransform =
@@ -105,35 +79,5 @@ fun Modifier.sharedArt(key: String, scope: AnimatedVisibilityScope? = null): Mod
             animatedVisibilityScope = animated,
             boundsTransform = Motion.ArtBounds,
         )
-    }
-}
-
-/**
- * Light vertical swipe: fires after a short drag (~28dp past touch slop) or on any quick flick.
- */
-fun Modifier.verticalSwipe(
-    onSwipeUp: (() -> Unit)? = null,
-    onSwipeDown: (() -> Unit)? = null,
-): Modifier = pointerInput(onSwipeUp != null, onSwipeDown != null) {
-    val distance = 28.dp.toPx()
-    val fling = 350.dp.toPx() // per second
-    val tracker = VelocityTracker()
-    var total = 0f
-    detectVerticalDragGestures(
-        onDragStart = {
-            total = 0f
-            tracker.resetTracking()
-        },
-        onDragEnd = {
-            val velocity = tracker.calculateVelocity().y
-            when {
-                total < 0 && (total < -distance || velocity < -fling) -> onSwipeUp?.invoke()
-                total > 0 && (total > distance || velocity > fling) -> onSwipeDown?.invoke()
-            }
-        },
-    ) { change, dy ->
-        change.consume()
-        total += dy
-        tracker.addPosition(change.uptimeMillis, change.position)
     }
 }

@@ -1,5 +1,6 @@
 package dev.savar.aria.widget
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -8,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.SizeF
 import android.util.TypedValue
 import android.view.View
@@ -28,6 +30,25 @@ import kotlinx.coroutines.launch
  * The class name must stay `AriaWidgetReceiver` so widgets already on home screens keep working.
  */
 class AriaWidgetReceiver : AppWidgetProvider() {
+    override fun onReceive(context: Context, intent: Intent) {
+        when (intent.action) {
+            // Moments when the launcher would otherwise keep a stale or blank widget until the next
+            // song change: the app was just updated (the owner installs every release), the phone
+            // rebooted, or the watchdog fired after the player process died without saying so.
+            Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_BOOT_COMPLETED, AriaWidget.ACTION_WATCHDOG -> {
+                val pending = goAsync()
+                context.container.scope.launch {
+                    try {
+                        if (AriaWidget.hasWidgets(context)) WidgetState.refresh(context)
+                    } finally {
+                        pending.finish()
+                    }
+                }
+            }
+            else -> super.onReceive(context, intent)
+        }
+    }
+
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
         // Resized: rebuild for the new size.
         onUpdate(context, manager, intArrayOf(id))
@@ -50,6 +71,27 @@ object AriaWidget {
     // Same breakpoints as the original design: narrower than Wide -> small, shorter than Tall -> wide.
     private const val WIDE_MIN_WIDTH = 220f
     private const val TALL_MIN_HEIGHT = 230f
+
+    const val ACTION_WATCHDOG = "dev.savar.aria.widget.WATCHDOG"
+    private const val WATCHDOG_DELAY_MS = 90_000L
+
+    /**
+     * Called every minute or so while music plays. If the player process is then killed without
+     * running onDestroy (OxygenOS does this), the alarm still fires, starts a fresh process and
+     * [WidgetState.refresh] flips the stale "pause" icon back to "play". While the player lives,
+     * each call pushes the alarm further out, so it never fires.
+     */
+    fun armWatchdog(context: Context) {
+        val app = context.applicationContext
+        if (!hasWidgets(app)) return
+        val alarms = app.getSystemService(AlarmManager::class.java) ?: return
+        val intent = PendingIntent.getBroadcast(
+            app, 0,
+            Intent(app, AriaWidgetReceiver::class.java).setAction(ACTION_WATCHDOG),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        alarms.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + WATCHDOG_DELAY_MS, intent)
+    }
 
     fun hasWidgets(context: Context): Boolean = widgetIds(context.applicationContext).isNotEmpty()
 

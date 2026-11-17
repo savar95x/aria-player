@@ -27,6 +27,7 @@ import dev.savar.aria.data.SavedQueue
 import dev.savar.aria.data.artistText
 import dev.savar.aria.data.songUri
 import dev.savar.aria.data.titleText
+import dev.savar.aria.widget.AriaWidget
 import dev.savar.aria.widget.WidgetUpdateReceiver
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
@@ -96,6 +97,7 @@ class PlaybackService : MediaSessionService() {
                         Player.EVENT_MEDIA_ITEM_TRANSITION,
                         Player.EVENT_IS_PLAYING_CHANGED,
                         Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                        Player.EVENT_PLAYBACK_STATE_CHANGED,
                         Player.EVENT_TIMELINE_CHANGED,
                         Player.EVENT_MEDIA_METADATA_CHANGED,
                     )
@@ -121,11 +123,16 @@ class PlaybackService : MediaSessionService() {
         }
 
         restoreJob = scope.launch { restoreQueue() }
-        // Keep the saved position fresh so a crash or kill loses at most a few seconds.
+        // Keep the saved position fresh so a crash or kill loses at most a few seconds, and keep the
+        // widget's watchdog pushed out (see AriaWidget.armWatchdog).
         scope.launch {
+            var ticks = 0
             while (isActive) {
                 delay(10_000)
-                if (player.isPlaying) saveQueue()
+                if (player.isPlaying) {
+                    saveQueue()
+                    if (++ticks % 6 == 0) AriaWidget.armWatchdog(this@PlaybackService)
+                }
             }
         }
     }
@@ -173,7 +180,13 @@ class PlaybackService : MediaSessionService() {
 
     /** Sends the player's real state to the widget (also used to reconcile after widget taps). */
     fun pushWidget() {
-        WidgetUpdateReceiver.send(this, player.currentMediaItem, player.mediaMetadata, player.isPlaying || player.playWhenReady)
+        // "Playing" = playing or about to (buffering after a skip). Not playWhenReady alone: at the end
+        // of a queue or after an error it stays true while nothing plays, and the widget showed pause.
+        val state = player.playbackState
+        val playing = player.isPlaying ||
+            (player.playWhenReady && (state == Player.STATE_BUFFERING || state == Player.STATE_READY))
+        if (playing) AriaWidget.armWatchdog(this)
+        WidgetUpdateReceiver.send(this, player.currentMediaItem, player.mediaMetadata, playing)
     }
 
     private fun saveQueue() {

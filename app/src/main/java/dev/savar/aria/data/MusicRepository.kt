@@ -2,11 +2,9 @@ package dev.savar.aria.data
 
 import android.content.Context
 import android.database.ContentObserver
-import android.database.Cursor
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
-import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview

@@ -147,7 +147,6 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
     val s = settings ?: return
     val store = container.settings
     val filter = s.folders
-    var showFonts by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     Scaffold(
@@ -240,10 +239,6 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
             Spacer(Modifier.height(LocalBottomPadding.current + 16.dp))
         }
     }
-
-    if (showFonts) {
-        FontPicker(current = s.font, onPick = { store.setFont(it); showFonts = false }, onDismiss = { showFonts = false })
-    }
 }
 
 /**
@@ -335,58 +330,6 @@ private fun RoundnessRow(value: Float, onChange: (Float) -> Unit) {
             steps = 7,
             modifier = Modifier.padding(end = 8.dp),
         )
-    }
-}
-
-@Composable
-private fun FontPicker(current: String?, onPick: (String?) -> Unit, onDismiss: () -> Unit) {
-    var custom by remember { mutableStateOf(current?.takeIf { it !in FeaturedFonts }.orEmpty()) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Font") },
-        text = {
-            Column {
-                LazyColumn(Modifier.heightIn(max = 360.dp)) {
-                    item {
-                        FontOption("System default", FontFamily.Default, current == null) { onPick(null) }
-                    }
-                    items(FeaturedFonts) { name ->
-                        FontOption(name, googleFontFamily(name), current == name) { onPick(name) }
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = custom,
-                    onValueChange = { custom = it },
-                    singleLine = true,
-                    label = { Text("Any Google Font") },
-                    placeholder = { Text("e.g. Bricolage Grotesque") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(
-                    "Exact name from fonts.google.com. Downloads once, then works offline.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(shape = pill(), onClick = { onPick(custom.trim()) }, enabled = custom.isNotBlank()) { Text("Use custom") }
-        },
-        dismissButton = { TextButton(shape = pill(), onClick = onDismiss) { Text("Cancel") } },
-    )
-}
-
-@Composable
-private fun FontOption(name: String, family: FontFamily, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = onClick)
-        Spacer(Modifier.width(8.dp))
-        Text(name, fontFamily = family, style = MaterialTheme.typography.bodyLarge)
     }
 }
 

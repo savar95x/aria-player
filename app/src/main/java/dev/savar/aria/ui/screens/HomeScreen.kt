@@ -1,5 +1,8 @@
 @file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
+// Home: the search pill, and the Songs / Albums / Artists tabs with their sorts and fast scrollers.
+// Also the list helpers the other library pages share (listBottomPadding, NavBarSpacer, ArtistRow).
+
 package dev.savar.aria.ui.screens
 
 import dev.savar.aria.ui.theme.pill
@@ -13,10 +16,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.rounded.Link
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.statusBarsPadding
-import dev.savar.aria.data.Links
 import dev.savar.aria.ui.sharedContainer
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.ui.draw.clip
@@ -57,26 +58,15 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.toSize
-import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.DropdownMenu
@@ -88,24 +78,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -118,9 +99,6 @@ import dev.savar.aria.data.SongSort
 import dev.savar.aria.data.AlbumSort
 import dev.savar.aria.data.ArtistSort
 import dev.savar.aria.data.SortOption
-import dev.savar.aria.data.sortAlbums
-import dev.savar.aria.data.sortArtists
-import dev.savar.aria.data.sortSongs
 import dev.savar.aria.ui.LocalBottomPadding
 import dev.savar.aria.ui.LocalDockInset
 import dev.savar.aria.ui.PlayerUiState
@@ -128,15 +106,14 @@ import dev.savar.aria.ui.PlayerViewModel
 import dev.savar.aria.ui.components.ArtImage
 import dev.savar.aria.ui.components.SongActions
 import dev.savar.aria.ui.components.SongRow
-import dev.savar.aria.ui.components.formatDuration
 
 enum class HomeTab(val label: String) { Songs("Songs"), Albums("Albums"), Artists("Artists") }
 
 @Composable
-private fun listBottomPadding(): PaddingValues = PaddingValues(bottom = LocalBottomPadding.current)
+internal fun listBottomPadding(): PaddingValues = PaddingValues(bottom = LocalBottomPadding.current)
 
 @Composable
-private fun NavBarSpacer() = Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+internal fun NavBarSpacer() = Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
 
 @Composable
 fun HomeScreen(
@@ -212,6 +189,44 @@ private fun EmptyLibrary(onSettings: () -> Unit) {
         Spacer(Modifier.height(16.dp))
         FilledTonalButton(shape = pill(), onClick = onSettings) { Text("Folder settings") }
     }
+}
+
+/** Google-style search bar: one rounded surface, search and settings at matching weight. */
+@Composable
+private fun SearchPill(onSearch: () -> Unit, onSettings: () -> Unit) {
+    PillRow(Modifier.clickable(onClick = onSearch)) {
+        Spacer(Modifier.width(12.dp))
+        Icon(Icons.Rounded.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(14.dp))
+        Text(
+            "Search or paste a link",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onSettings) {
+            Icon(Icons.Outlined.Settings, "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** The pill shape shared by the home search bar and the search screen, so one morphs into the other. */
+@Composable
+internal fun PillRow(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
+    Row(
+        Modifier
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .fillMaxWidth()
+            .height(56.dp)
+            .sharedContainer("search-pill")
+            .clip(pill())
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .then(modifier)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
 }
 
 @Composable
@@ -453,7 +468,7 @@ private fun CountSortRow(count: String, modifier: Modifier = Modifier, sortMenu:
 }
 
 @Composable
-private fun ArtistRow(artist: Artist, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun ArtistRow(artist: Artist, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
         modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -472,337 +487,11 @@ private fun ArtistRow(artist: Artist, modifier: Modifier = Modifier, onClick: ()
 }
 
 @Composable
-private fun BackTopBar(title: String = "", onBack: () -> Unit, actions: @Composable () -> Unit = {}) {
+internal fun BackTopBar(title: String = "", onBack: () -> Unit, actions: @Composable () -> Unit = {}) {
     TopAppBar(
         title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") } },
         actions = { actions() },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-    )
-}
-
-@Composable
-private fun PlayShuffleRow(onPlay: () -> Unit, onShuffle: () -> Unit) {
-    // Expressive buttons: shape morphs on press.
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Button(onClick = onPlay, shapes = ButtonDefaults.shapes(shape = pill())) {
-            Icon(Icons.Rounded.PlayArrow, null, Modifier.size(20.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("Play")
-        }
-        FilledTonalButton(onClick = onShuffle, shapes = ButtonDefaults.shapes(shape = pill())) {
-            Icon(Icons.Rounded.Shuffle, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("Shuffle")
-        }
-    }
-}
-
-@Composable
-fun AlbumScreen(
-    albumId: Long,
-    container: AppContainer,
-    player: PlayerUiState,
-    vm: PlayerViewModel,
-    actions: SongActions,
-    onBack: () -> Unit,
-    onArtist: (String) -> Unit,
-) {
-    val albums by container.library.albums.collectAsStateWithLifecycle()
-    val settings by container.settings.settings.collectAsStateWithLifecycle()
-    // A song's own MediaStore album id may belong to a merged album with a different id.
-    val album = albums.firstOrNull { it.id == albumId } ?: albums.firstOrNull { a -> a.songs.any { it.albumId == albumId } }
-    val pinned = album != null && album.pinKey in settings?.pinnedAlbums.orEmpty()
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            BackTopBar(onBack = onBack) {
-                if (album != null) {
-                    IconButton(onClick = { container.settings.togglePinned(album) }) {
-                        Icon(
-                            if (pinned) Icons.Rounded.PushPin else Icons.Outlined.PushPin,
-                            if (pinned) "Unpin album" else "Pin album",
-                            tint = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        },
-    ) { padding ->
-        if (album == null) return@Scaffold
-        LazyColumn(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize(), contentPadding = listBottomPadding()) {
-            item(key = "header") {
-                Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    ArtImage(
-                        album.art.copy(sizePx = 720),
-                        Modifier.sharedArt("album-${album.id}").size(240.dp),
-                        albumArtShape(),
-                        placeholder = album.art.copy(sizePx = 400),
-                    )
-                    Spacer(Modifier.height(20.dp))
-                    Text(album.title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-                    Text(
-                        album.artist,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onArtist(album.artist) }.padding(4.dp),
-                    )
-                    val total = album.songs.sumOf { it.durationMs }
-                    Text(
-                        listOfNotNull(
-                            album.year.takeIf { it > 0 }?.toString(),
-                            "${album.songs.size} songs",
-                            formatDuration(total),
-                        ).joinToString(" · "),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    PlayShuffleRow(onPlay = { vm.play(album.songs) }, onShuffle = { vm.play(album.songs, shuffle = true) })
-                    Spacer(Modifier.height(12.dp))
-                }
-            }
-            itemsIndexed(album.songs, key = { _, s -> s.id }) { index, song ->
-                SongRow(
-                    song = song,
-                    isCurrent = song.id == player.currentId,
-                    actions = actions,
-                    onClick = { vm.play(album.songs, index) },
-                    leading = {
-                        Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                            Text(
-                                (song.track % 1000).takeIf { it > 0 }?.toString() ?: "–",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                )
-            }
-            item { NavBarSpacer() }
-        }
-    }
-}
-
-@Composable
-fun ArtistScreen(
-    name: String,
-    container: AppContainer,
-    player: PlayerUiState,
-    vm: PlayerViewModel,
-    actions: SongActions,
-    onBack: () -> Unit,
-    photoOpen: Boolean,
-    onViewPhoto: (Artist, Rect) -> Unit,
-) {
-    val artists by container.library.artists.collectAsStateWithLifecycle()
-    val artist = artists.firstOrNull { it.name == name }
-    // Where the header photo is, so the full-screen viewer can grow out of it (and back into it).
-    var photoBounds by remember { mutableStateOf(Rect.Zero) }
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = { BackTopBar(onBack = onBack) }) { padding ->
-        if (artist == null) return@Scaffold
-        LazyColumn(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize(), contentPadding = listBottomPadding()) {
-            item(key = "header") {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    ArtistImage(
-                        artist,
-                        Modifier.sharedArt("artist-${artist.name}").size(168.dp)
-                            .onGloballyPositioned { photoBounds = Rect(it.positionInRoot(), it.size.toSize()) }
-                            // Hidden while the viewer shows it, so there's only ever one copy on screen.
-                            .graphicsLayer { alpha = if (photoOpen) 0f else 1f }
-                            .clip(CircleShape)
-                            .clickable { onViewPhoto(artist, photoBounds) },
-                        sizePx = 480,
-                        placeholderPx = 160,
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(artist.name, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-                    Text(
-                        "${artist.songs.size} songs · ${artist.albumCount} albums",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    PlayShuffleRow(onPlay = { vm.play(artist.songs) }, onShuffle = { vm.play(artist.songs, shuffle = true) })
-                    Spacer(Modifier.height(12.dp))
-                }
-            }
-            itemsIndexed(artist.songs, key = { _, s -> s.id }) { index, song ->
-                SongRow(song, song.id == player.currentId, actions, onClick = { vm.play(artist.songs, index) })
-            }
-            item { NavBarSpacer() }
-        }
-    }
-}
-
-@Composable
-fun SearchScreen(
-    container: AppContainer,
-    player: PlayerUiState,
-    vm: PlayerViewModel,
-    actions: SongActions,
-    onBack: () -> Unit,
-    onAlbum: (Long) -> Unit,
-    onArtist: (String) -> Unit,
-) {
-    val songs by container.library.songs.collectAsStateWithLifecycle()
-    val albums by container.library.albums.collectAsStateWithLifecycle()
-    val artists by container.library.artists.collectAsStateWithLifecycle()
-    var query by rememberSaveable { mutableStateOf("") }
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
-
-    val q = query.trim()
-    val link = remember(q) { Links.find(q) }
-    val songHits = remember(q, songs) {
-        if (q.isEmpty()) emptyList() else songs.orEmpty().filter {
-            it.title.contains(q, true) || it.artist.contains(q, true) || it.album.contains(q, true)
-        }
-    }
-    val albumHits = remember(q, albums) { if (q.isEmpty()) emptyList() else albums.filter { it.title.contains(q, true) }.take(6) }
-    val artistHits = remember(q, artists) { if (q.isEmpty()) emptyList() else artists.filter { it.name.contains(q, true) }.take(6) }
-
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            PillRow {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") }
-                    TextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        placeholder = { Text("Search or paste a link") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        trailingIcon = {
-                            if (query.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Close, "Clear") }
-                        },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                        ),
-                        modifier = Modifier.weight(1f).focusRequester(focus),
-                    )
-            }
-        },
-    ) { padding ->
-        LazyColumn(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize(), contentPadding = listBottomPadding()) {
-            link?.let { url ->
-                item(key = "link") { LinkRow(url, onPlay = { vm.playUrl(url); onBack() }) }
-            }
-            if (artistHits.isNotEmpty()) {
-                item { SectionHeader("Artists") }
-                items(artistHits, key = { "ar_" + it.name }) { ArtistRow(it) { onArtist(it.name) } }
-            }
-            if (albumHits.isNotEmpty()) {
-                item { SectionHeader("Albums") }
-                items(albumHits, key = { "al_" + it.id }) { album ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable { onAlbum(album.id) }.padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        ArtImage(album.art.copy(sizePx = 160), Modifier.sharedArt("album-${album.id}").size(52.dp), albumArtShape())
-                        Spacer(Modifier.width(14.dp))
-                        Column {
-                            Text(album.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(album.artist, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
-            if (songHits.isNotEmpty()) {
-                item { SectionHeader("Songs") }
-                itemsIndexed(songHits, key = { _, s -> "s_" + s.id }) { index, song ->
-                    SongRow(song, song.id == player.currentId, actions, onClick = { vm.play(songHits, index) })
-                }
-            }
-            item { NavBarSpacer() }
-        }
-    }
-}
-
-/** Google-style search bar: one rounded surface, search and settings at matching weight. */
-@Composable
-private fun SearchPill(onSearch: () -> Unit, onSettings: () -> Unit) {
-    PillRow(Modifier.clickable(onClick = onSearch)) {
-        Spacer(Modifier.width(12.dp))
-        Icon(Icons.Rounded.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.width(14.dp))
-        Text(
-            "Search or paste a link",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-        )
-        IconButton(onClick = onSettings) {
-            Icon(Icons.Outlined.Settings, "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-/** The pill shape shared by the home search bar and the search screen, so one morphs into the other. */
-@Composable
-private fun PillRow(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
-    Row(
-        Modifier
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .fillMaxWidth()
-            .height(56.dp)
-            .sharedContainer("search-pill")
-            .clip(pill())
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .then(modifier)
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        content = content,
-    )
-}
-
-@Composable
-private fun LinkRow(url: String, onPlay: () -> Unit) {
-    val youtube = Links.isYouTube(url)
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(enabled = !youtube, onClick = onPlay)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier.size(52.dp).clip(rounded(12.dp)).background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Rounded.Link, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-        }
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                if (youtube) "YouTube links aren't supported yet" else "Play this link",
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (youtube) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                url,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
     )
 }

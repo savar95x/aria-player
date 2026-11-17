@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DragHandle
@@ -46,7 +45,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -59,16 +57,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import dev.savar.aria.data.SongArt
 import dev.savar.aria.data.artistText
-import dev.savar.aria.data.songUri
 import dev.savar.aria.data.titleText
 import dev.savar.aria.ui.PlayerUiState
 import dev.savar.aria.ui.PlayerViewModel
 import dev.savar.aria.ui.QueueEntry
 import dev.savar.aria.ui.components.ArtImage
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 
 /**
  * The play queue. Drag a row by its handle to reorder; the list scrolls itself near the edges.
