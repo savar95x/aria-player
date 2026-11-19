@@ -220,7 +220,8 @@ internal fun PillRow(modifier: Modifier = Modifier, content: @Composable RowScop
             .fillMaxWidth()
             .height(56.dp)
             .sharedContainer("search-pill")
-            .clip(pill())
+            // Always fully round: the search bar ignores the roundness setting (owner's call).
+            .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .then(modifier)
             .padding(horizontal = 4.dp),

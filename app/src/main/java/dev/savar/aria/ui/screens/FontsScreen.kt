@@ -2,6 +2,7 @@
 
 package dev.savar.aria.ui.screens
 
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.verticalScroll
@@ -170,7 +171,7 @@ fun TypefaceScreen(container: AppContainer, onBack: () -> Unit) {
                 trailingIcon = {
                     if (query.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Close, "Clear") }
                 },
-                shape = pill(),
+                shape = CircleShape, // search bars ignore the roundness setting
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             )
             LazyRow(

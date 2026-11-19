@@ -157,7 +157,8 @@ between screens (mini player ↔ now playing, album tile ↔ album page) uses `p
 transition instead of snapping. Pills and circles (all Buttons, search bar, segmented buttons) use `pill()`: fully round at default, square at 0. Material's own buttons default to a fixed
 full shape, so always pass `shape = pill()` (or `ButtonDefaults.shapes(shape = pill())`). Inside
 `graphicsLayer {}` lambdas (not composable), compute the shape outside first.
-Exceptions the owner asked for: **artist photos are always circles** (`CircleShape`, ignore the slider);
+Exceptions the owner asked for: **artist photos**, the **search bars** (home/search `PillRow`, font search)
+and the **theme segmented buttons** are always fully round (`CircleShape`, ignore the slider);
 the big **play/pause button** uses `playButtonCorner()`: unscaled Material morph (26dp paused ↔ 40dp
 playing) from 50% up, one fixed `26dp × scale` shape below 50% (a small-radius morph looked like a glitch).
 

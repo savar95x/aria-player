@@ -2,6 +2,7 @@
 
 package dev.savar.aria.ui.screens
 
+import androidx.compose.foundation.shape.CircleShape
 import dev.savar.aria.ui.theme.pill
 import kotlin.math.roundToInt
 import androidx.compose.ui.draw.clip
@@ -171,7 +172,7 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
                                 SegmentedButton(
                                     selected = s.themeMode == mode,
                                     onClick = { store.setTheme(mode) },
-                                    shape = SegmentedButtonDefaults.itemShape(i, ThemeMode.entries.size, pill()),
+                                    shape = SegmentedButtonDefaults.itemShape(i, ThemeMode.entries.size, CircleShape) /* ignores the roundness setting */,
                                 ) { Text(mode.name) }
                             }
                         }
