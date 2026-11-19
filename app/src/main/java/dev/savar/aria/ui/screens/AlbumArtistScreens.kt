@@ -53,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.savar.aria.AppContainer
@@ -126,7 +127,17 @@ fun AlbumScreen(
                         placeholder = album.art.copy(sizePx = 400),
                     )
                     Spacer(Modifier.height(20.dp))
-                    Text(album.title, style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+                    // One step below headline: album titles are often long, and at headline size they
+                    // wrapped into a big block that dwarfed the artist line and the track list.
+                    Text(
+                        album.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
+                    Spacer(Modifier.height(2.dp))
                     Text(
                         album.artist,
                         style = MaterialTheme.typography.titleMedium,

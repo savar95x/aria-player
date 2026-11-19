@@ -195,7 +195,8 @@ unpolished): headlines 700 (now-playing title, album/artist names), display/titl
 primary text (bodyLarge, titleMedium, labels) 500, secondary text (bodyMedium/Small) 400. The playing row
 uses the same weights as the others (only tint + equaliser mark mark it). List rows and album grid tiles share one
 pair: title bodyLarge, subtitle bodyMedium in onSurfaceVariant (the grid once used titleSmall/bodySmall and
-looked off next to the other tabs). Letter spacing defaults to **0** for every style (Material's +0.1..+0.5sp
+looked off next to the other tabs). Album page header: title titleLarge (max 2 lines; headline size
+made long titles a huge block, owner said the sizes felt wrong), artist titleMedium in primary, info bodyMedium. Letter spacing defaults to **0** for every style (Material's +0.1..+0.5sp
 body/title tracking looked stretched and "eccentric" to the owner next to Metro/Musify); only the
 letter-spacing setting changes it. Prefer the style's weight over an explicit `fontWeight`, so
 the weight slider still applies. "Reset to
