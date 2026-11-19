@@ -399,10 +399,12 @@ private fun AlbumsTab(
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    Text(e.album.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    // Same title/subtitle styles as the song and artist rows, so the tabs read alike
+                    // (titleSmall + bodySmall here looked smaller and heavier than the other tabs).
+                    Text(e.album.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         e.album.artist,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
