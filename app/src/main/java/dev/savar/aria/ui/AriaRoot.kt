@@ -2,6 +2,7 @@ package dev.savar.aria.ui
 
 import dev.savar.aria.ui.theme.pill
 import kotlinx.coroutines.launch
+import dev.savar.aria.ui.components.UpdateDialog
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.derivedStateOf
@@ -129,6 +130,9 @@ fun AriaRoot(container: AppContainer) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         granted = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     }
+    // New release on GitHub? Checked once per launch when online (see update/Updater.kt).
+    LaunchedEffect(Unit) { container.updater.checkOnLaunch() }
+    UpdateDialog(container.updater)
     LaunchedEffect(granted) { if (granted) container.library.refresh() }
 
     // A Surface (not a bare Box) so text and icons inherit the theme's content colour in dark mode.

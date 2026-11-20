@@ -130,6 +130,9 @@ app/src/main/java/dev/savar/aria/
     WidgetState.kt     What the widget shows; rebuilt from QueueStore after a cold start
     WidgetUpdateReceiver  player -> widget broadcast
     WidgetActionReceiver  widget buttons -> player (direct call if running, else MediaController)
+  update/
+    Updater.kt         In-app updates: GitHub releases/latest on launch (online only), one resumable APK
+                       download in filesDir/updates, PackageInstaller session; InstallResultReceiver
   ui/
     Pages.kt           Own navigator: back stack, PageHost, transitions (see Navigation below)
     AriaRoot.kt        Routes, dock (mini player + ShortNavigationBar), drawing of the now-playing sheet,
@@ -231,6 +234,16 @@ Bump the `.v2` marker logic in `loadIndex()` if the automatic matcher changes an
 **Background playback on OxygenOS.** Swiping Aria from recents can kill playback; that's OxygenOS.
 A separate player process was tried and made things worse (reverted). Settings has
 battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new idea.
+
+**In-app updates.** On launch (once per launch, only with a validated network) `Updater` asks
+`api.github.com/repos/savar95x/aria-player/releases/latest` (skips the `ci-log` pre-release) and compares
+the tag with `BuildConfig.VERSION_NAME` numerically. Newer → `UpdateDialog` (notes = commit subjects;
+"Later" hides it until next launch; Settings → About row reopens it). The APK goes to
+`filesDir/updates/aria-<tag>.apk` (`.part` resumes, a finished file is reused, other files deleted; the
+folder is emptied once the running version catches up), so nothing is downloaded twice. Install via a
+PackageInstaller session with `USER_ACTION_NOT_REQUIRED` (silent once Aria is its own installer of record,
+Android 12+); first time Android asks to allow "Install unknown apps", and returning resumes. Needs the
+same signing key (shared keystore), so never change it.
 
 ## Decisions the owner made (don't regress)
 

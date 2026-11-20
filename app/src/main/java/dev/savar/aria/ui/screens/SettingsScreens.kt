@@ -81,6 +81,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.savar.aria.AppContainer
 import dev.savar.aria.BuildConfig
+import dev.savar.aria.update.Updater
 import dev.savar.aria.data.FolderRule
 import dev.savar.aria.data.ThemeMode
 import dev.savar.aria.data.buildFolderTree
@@ -226,12 +227,21 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit, onFolders: () ->
             SectionTitle("About")
             SettingsGroup(
                 {
+                    // When a newer release is known, this row says so and reopens the update prompt.
+                    val update by container.updater.state.collectAsStateWithLifecycle()
+                    val newer = (update as? Updater.State.Available)?.release?.version
                     ListItem(
                         headlineContent = { Text("Aria ${BuildConfig.VERSION_NAME}") },
-                        supportingContent = { Text("github.com/savar95x/aria-player") },
+                        supportingContent = {
+                            Text(
+                                if (newer != null) "Update to $newer available" else "github.com/savar95x/aria-player",
+                                color = if (newer != null) MaterialTheme.colorScheme.primary else Color.Unspecified,
+                            )
+                        },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         modifier = Modifier.clickable {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/savar95x/aria-player")))
+                            if (newer != null) container.updater.dismissed.value = false
+                            else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/savar95x/aria-player")))
                         },
                     )
                 },

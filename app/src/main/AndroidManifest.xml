@@ -6,6 +6,9 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- In-app updates from GitHub Releases (update/Updater.kt). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Only to redraw the widget after a reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -69,6 +72,10 @@
         </service>
 
         <!-- Lets a headset / Bluetooth play button resume the last queue after the app was killed. -->
+        <!-- PackageInstaller's result for in-app updates (update/Updater.kt). -->
+        <receiver
+            android:name=".update.InstallResultReceiver"
+            android:exported="false" />
         <receiver
             android:name="androidx.media3.session.MediaButtonReceiver"
             android:exported="true">

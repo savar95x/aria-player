@@ -13,6 +13,7 @@ import dev.savar.aria.data.QueueStore
 import dev.savar.aria.data.SettingsStore
 import dev.savar.aria.data.SongArtFetcher
 import dev.savar.aria.data.SongArtKeyer
+import dev.savar.aria.update.Updater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -58,6 +59,7 @@ class AppContainer(context: Context) {
     val queueStore by lazy { QueueStore(context) }
     val lyrics by lazy { LyricsRepository(context) }
     val artistPhotos by lazy { ArtistPhotos(context) }
+    val updater by lazy { Updater(context, scope) }
 
     /** A link shared/opened into Aria, waiting for the player to pick it up. */
     val pendingLink = MutableStateFlow<String?>(null)
