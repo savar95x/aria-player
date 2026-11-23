@@ -116,6 +116,7 @@ app/src/main/java/dev/savar/aria/
                        (that showed wrong covers). SongArt.sizePx is part of the cache key.
     Lyrics.kt          File tags first, then LRCLIB (/api/get needs album+duration, else /api/search);
                        cached in filesDir/lyrics
+                       Enhanced LRC (per-word <mm:ss> stamps, v1:/bg: voice labels) is stripped to plain lines
     ArtistPhotos.kt    Deezer (matched through the user's own albums) + Wikipedia; user overrides;
                        files in filesDir/artists (format documented in the class)
     SettingsStore      DataStore prefs (theme, AMOLED, dynamic colour, Google Font + text size/weight/

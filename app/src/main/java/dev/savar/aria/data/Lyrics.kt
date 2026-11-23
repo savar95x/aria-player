@@ -213,7 +213,7 @@ class LyricsRepository(private val context: Context) {
             val lines = text.lineSequence().flatMap { raw ->
                 val stamps = timeTag.findAll(raw).toList()
                 if (stamps.isEmpty()) return@flatMap emptySequence()
-                val words = raw.substring(stamps.last().range.last + 1).trim()
+                val words = cleanLine(raw.substring(stamps.last().range.last + 1))
                 stamps.asSequence().map { m ->
                     val min = m.groupValues[1].toLong()
                     val sec = m.groupValues[2].replace(':', '.').toDouble()
@@ -222,6 +222,14 @@ class LyricsRepository(private val context: Context) {
             }.sortedBy { it.timeMs }.toList()
             return if (lines.isEmpty()) Lyrics.Plain(text) else Lyrics.Synced(lines)
         }
+
+        // "Enhanced LRC" (karaoke files, often embedded in tags): a <mm:ss.xx> stamp before every word
+        // and a voice label ("v1:", "v2:", "bg:") at the start. Aria syncs by line, so both are dropped.
+        private val wordTag = Regex("""<\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?>""")
+        private val voiceTag = Regex("""^\s*(?:v\d+|bg)\s*:\s*""", RegexOption.IGNORE_CASE)
+
+        private fun cleanLine(text: String): String =
+            text.replace(wordTag, "").replace(voiceTag, "").replace(Regex("""\s+"""), " ").trim()
 
         private fun formatTime(ms: Long): String {
             val t = ms.coerceAtLeast(0)
