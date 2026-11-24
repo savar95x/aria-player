@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import dev.savar.aria.data.AppSettings
 import dev.savar.aria.data.ThemeMode
+import dev.savar.kit.pureBlack
 
 private val AriaDark = darkColorScheme(
     primary = Color(0xFFC5B8FF),
@@ -45,18 +46,6 @@ private val AriaLight = lightColorScheme(
     tertiary = Color(0xFF00677D),
 )
 
-/** Pure black surfaces, but keep a hint of the accent hue in the raised containers. */
-private fun ColorScheme.amoled(): ColorScheme = copy(
-    background = Color.Black,
-    surface = Color.Black,
-    surfaceDim = Color.Black,
-    surfaceContainerLowest = Color.Black,
-    surfaceContainerLow = lerp(Color.Black, surfaceContainerLow, 0.45f),
-    surfaceContainer = lerp(Color.Black, surfaceContainer, 0.55f),
-    surfaceContainerHigh = lerp(Color.Black, surfaceContainerHigh, 0.65f),
-    surfaceContainerHighest = lerp(Color.Black, surfaceContainerHighest, 0.75f),
-    surfaceVariant = lerp(Color.Black, surfaceVariant, 0.7f),
-)
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -73,7 +62,7 @@ fun AriaTheme(settings: AppSettings, content: @Composable () -> Unit) {
         dark -> AriaDark
         else -> AriaLight
     }
-    val scheme = if (dark && settings.amoled) base.amoled() else base
+    val scheme = if (dark && settings.amoled) base.pureBlack() else base // shared kit recipe
     val typography = remember(settings.font, settings.textScale, settings.weightDelta, settings.letterSpacing) {
         typographyFor(settings.font, settings.textScale, settings.weightDelta, settings.letterSpacing)
     }

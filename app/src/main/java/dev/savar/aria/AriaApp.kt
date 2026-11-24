@@ -13,7 +13,8 @@ import dev.savar.aria.data.QueueStore
 import dev.savar.aria.data.SettingsStore
 import dev.savar.aria.data.SongArtFetcher
 import dev.savar.aria.data.SongArtKeyer
-import dev.savar.aria.update.Updater
+import dev.savar.kit.Kit
+import dev.savar.kit.KitApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,6 +35,7 @@ class AriaApp : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        Kit.init(AriaKit)
         // A killed process can't tell the widget it stopped playing; whenever the app comes back
         // (UI, service or a widget tap), redraw it from the truth. Not in the crash-screen process.
         if (!getProcessName().endsWith(":crash")) {
@@ -51,6 +53,9 @@ class AriaApp : Application(), SingletonImageLoader.Factory {
             .build()
 }
 
+/** What the shared kit needs to know about Aria: releases carry "aria.apk", notes are the commit subjects. */
+val AriaKit = KitApp(name = "Aria", repo = "savar95x/aria-player", apkName = { "aria.apk" }, changelogNotes = false)
+
 /** Hand-rolled DI: everything lives for the process lifetime, created on first use. */
 class AppContainer(context: Context) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -59,7 +64,6 @@ class AppContainer(context: Context) {
     val queueStore by lazy { QueueStore(context) }
     val lyrics by lazy { LyricsRepository(context) }
     val artistPhotos by lazy { ArtistPhotos(context) }
-    val updater by lazy { Updater(context, scope) }
 
     /** A link shared/opened into Aria, waiting for the player to pick it up. */
     val pendingLink = MutableStateFlow<String?>(null)
