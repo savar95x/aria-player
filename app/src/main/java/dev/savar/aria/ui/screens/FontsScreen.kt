@@ -4,7 +4,7 @@ package dev.savar.aria.ui.screens
 
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import dev.savar.aria.ui.theme.cornerDp
+import dev.savar.aria.ui.theme.LocalCornerScale
 import dev.savar.kit.FontPageContent
 import dev.savar.kit.FontSample
 import dev.savar.kit.FontSettings
@@ -77,9 +77,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.savar.aria.AppContainer
-import dev.savar.aria.data.FontCatalog
-import dev.savar.aria.data.FontCategory
-import dev.savar.aria.data.FontEntry
 import dev.savar.aria.ui.theme.googleFontFamily
 import dev.savar.aria.ui.theme.rounded
 
@@ -111,6 +108,7 @@ fun FontsScreen(container: AppContainer, onBack: () -> Unit, onTypeface: () -> U
         },
     ) { padding ->
         val current = FontSettings(s.font, s.textScale, s.weightDelta, s.letterSpacing)
+        val cornerScale = LocalCornerScale.current
         FontPageContent(
             current,
             FontSample("Song title", "Artist name · Album · 3:45", "Now playing"),
@@ -123,7 +121,7 @@ fun FontsScreen(container: AppContainer, onBack: () -> Unit, onTypeface: () -> U
             },
             modifier = Modifier.padding(top = padding.calculateTopPadding()).navigationBarsPadding(),
             previewShape = rounded(24.dp),
-            groupShape = { outer, inner, first, last -> groupShape(cornerDp(outer), cornerDp(inner), first, last) },
+            groupShape = { outer, inner, first, last -> groupShape(outer * cornerScale, inner * cornerScale, first, last) },
         )
     }
 

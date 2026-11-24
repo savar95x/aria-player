@@ -103,7 +103,7 @@ import dev.savar.aria.data.FolderRule
 import dev.savar.aria.data.ThemeMode
 import dev.savar.aria.data.buildFolderTree
 import dev.savar.aria.ui.LocalBottomPadding
-import dev.savar.aria.ui.theme.FeaturedFonts
+import dev.savar.kit.FeaturedFonts
 import dev.savar.aria.ui.theme.googleFontFamily
 
 /**
