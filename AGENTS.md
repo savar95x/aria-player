@@ -14,6 +14,14 @@ what the owner has decided, and what has already been tried.
 6. If anything here turned out wrong or you learned something the next agent needs, update this file
    in the same push.
 
+## Shared kit (`dev.savar.kit`, Nov 2026)
+Aria, Minutia, Hiatus and Regista share byte-identical files in `app/src/main/java/dev/savar/kit/` (updater +
+update card/row, top bar colours, pure black, settings rows with tonal icons, Aria's text styles, app font page +
+typeface picker). **Never edit them in one repo only**: change, copy to all four, ship all four. See
+[`docs/KIT.md`](docs/KIT.md); `scripts/kit-check.sh` diffs against the other repos. Owner decisions (Nov 2026): icons on
+every settings row; in pure black the top bar stays black when scrolled; updates only as a card, never a pop-up;
+the same Font row/page in every app.
+
 ## The product
 
 Aria is a lean, native Android music player for **local files**. The owner uses it every day on a
@@ -121,8 +129,6 @@ app/src/main/java/dev/savar/aria/
                        files in filesDir/artists (format documented in the class)
     SettingsStore      DataStore prefs (theme, AMOLED, dynamic colour, Google Font + text size/weight/
                        letter spacing, sorts, folders, pinned albums, corner roundness)
-    FontCatalog.kt     All Google Fonts (fonts.google.com/metadata/fonts), cached weekly in filesDir;
-                       falls back to a featured list offline
     QueueStore         Saved queue + position (restored at service start and by the widget)
     Links.kt           "Play a link" (http audio, HLS, radio). Media ids prefixed "url:"
   metadata/            iTunes Search lookup + jaudiotagger tag writer (tag editor screen)
@@ -131,9 +137,8 @@ app/src/main/java/dev/savar/aria/
     WidgetState.kt     What the widget shows; rebuilt from QueueStore after a cold start
     WidgetUpdateReceiver  player -> widget broadcast
     WidgetActionReceiver  widget buttons -> player (direct call if running, else MediaController)
-  update/
-    Updater.kt         In-app updates: GitHub releases/latest on launch (online only), one resumable APK
-                       download in filesDir/updates, PackageInstaller session; InstallResultReceiver
+dev/savar/kit/         Shared kit, byte-identical in all four apps (updater, update card/row, rows, text styles,
+                       font page + typeface picker); see docs/KIT.md
   ui/
     Pages.kt           Own navigator: back stack, PageHost, transitions (see Navigation below)
     AriaRoot.kt        Routes, dock (mini player + ShortNavigationBar), drawing of the now-playing sheet,
@@ -142,7 +147,7 @@ app/src/main/java/dev/savar/aria/
     PlayerViewModel    MediaController wrapper; physical shuffle (reorders the real queue around the
                        current item, keeps the original order for un-shuffle)
     Motion.kt          Motion tokens, sharedArt/sharedContainer helpers
-    theme/             Theme (Expressive), Fonts (downloadable Google Fonts; catalogue in data/FontCatalog), Corners
+    theme/             Theme (Expressive), Fonts (thin wrappers over the kit's text styles and Google Fonts), Corners
     components/        ArtImage, ArtistImage, SongRow, FastScroller...
     screens/           HomeScreen (tabs, song/album/artist lists, sort menus), AlbumArtistScreens,
                        SearchScreen, PlayerScreens (now playing, mini player, seek bar), QueueSheet, LyricsPane, TagEditor, Settings, Fonts (font page +
@@ -236,14 +241,13 @@ Bump the `.v2` marker logic in `loadIndex()` if the automatic matcher changes an
 A separate player process was tried and made things worse (reverted). Settings has
 battery-optimisation and OnePlus guidance rows. Don't re-attempt without a new idea.
 
-**In-app updates.** On launch (once per launch, only with a validated network) `Updater` asks
-`api.github.com/repos/savar95x/aria-player/releases/latest` (skips the `ci-log` pre-release) and compares
-the tag with `BuildConfig.VERSION_NAME` numerically. Newer → `UpdateDialog` (notes = commit subjects;
-"Later" hides it until next launch; Settings → About row reopens it). The APK goes to
-`filesDir/updates/aria-<tag>.apk` (`.part` resumes, a finished file is reused, other files deleted; the
-folder is emptied once the running version catches up), so nothing is downloaded twice. Install via a
-PackageInstaller session with `USER_ACTION_NOT_REQUIRED` (silent once Aria is its own installer of record,
-Android 12+); first time Android asks to allow "Install unknown apps", and returning resumes. Needs the
+**In-app updates.** The shared kit's `Updates` (`dev/savar/kit/Updater.kt`, same in all four apps): checked on
+every resume (at most every 10 min) via the `github.com/…/releases/latest` redirect (no API rate limit; it skips the
+`ci-log` pre-release), API with ETag as fallback; notes = the release body (commit subjects). Newer → `UpdateCard`
+under the home search bar ("Later" hides it until next start) and `UpdateRow` in Settings → About. No dialog (owner
+prefers cards). The APK (`aria.apk` asset) goes to `noBackupFilesDir/kit-updates/` (`.part` resumes, a finished file
+is reused, pre-fetched on unmetered, deleted once installed). Install via a PackageInstaller session with
+`USER_ACTION_NOT_REQUIRED`; first time Android asks to allow "Install unknown apps", and returning resumes. Needs the
 same signing key (shared keystore), so never change it.
 
 ## Decisions the owner made (don't regress)

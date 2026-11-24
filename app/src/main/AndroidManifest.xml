@@ -74,7 +74,7 @@
         <!-- Lets a headset / Bluetooth play button resume the last queue after the app was killed. -->
         <!-- PackageInstaller's result for in-app updates (update/Updater.kt). -->
         <receiver
-            android:name=".update.InstallResultReceiver"
+            android:name="dev.savar.kit.UpdateReceiver"
             android:exported="false" />
         <receiver
             android:name="androidx.media3.session.MediaButtonReceiver"

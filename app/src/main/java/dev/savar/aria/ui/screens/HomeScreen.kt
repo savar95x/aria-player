@@ -5,6 +5,8 @@
 
 package dev.savar.aria.ui.screens
 
+import dev.savar.kit.UpdateCard
+
 import dev.savar.aria.ui.theme.pill
 import dev.savar.aria.ui.theme.albumArtShape
 import dev.savar.aria.ui.components.ArtistImage
@@ -144,7 +146,16 @@ fun HomeScreen(
 
     Scaffold(
         containerColor = bg,
-        topBar = { SearchPill(onSearch = onSearch, onSettings = onSettings) },
+        topBar = {
+            Column {
+                SearchPill(onSearch = onSearch, onSettings = onSettings)
+                UpdateCard(
+                    Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
+                    shape = rounded(28.dp),
+                    buttonShape = pill(),
+                )
+            }
+        },
     ) { padding ->
         Box(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) {
             when {

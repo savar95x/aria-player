@@ -11,3 +11,4 @@ build/
 
 # Downloaded release APKs (for tools/verify_apk.py)
 *.apk
+out/
