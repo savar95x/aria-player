@@ -16,7 +16,7 @@ what the owner has decided, and what has already been tried.
 
 ## Shared kit (`dev.savar.kit`, Nov 2026)
 Aria, Minutia, Hiatus and Regista share byte-identical files in `app/src/main/java/dev/savar/kit/` (updater +
-update card/row, top bar colours, pure black, settings rows with tonal icons, Aria's text styles, app font page +
+update card/row, top bar colours, pure black, settings rows with tonal icons, stock Material 3 text styles, app font page +
 typeface picker). **Never edit them in one repo only**: change, copy to all four, ship all four. See
 [`docs/KIT.md`](docs/KIT.md); `scripts/kit-check.sh` diffs against the other repos. Owner decisions (Nov 2026): icons on
 every settings row; in pure black the top bar stays black when scrolled; updates only as a card, never a pop-up;
@@ -199,15 +199,9 @@ a 400ms debounce) froze the app or swallowed taps.
 sliders: size 0.8–1.3×, weight −300..+300, letter spacing −5..+5 px (smooth, snaps to 0 near 0).
 `typographyFor(font, textScale, weightDelta, letterSpacing)` in `ui/theme/Fonts.kt` builds the
 Typography; downloadable fonts request weights 100–900 so the weight slider works.
-Base weights are Aria's, not Material's (Material left nearly everything Regular, which the owner found
-unpolished): headlines 700 (now-playing title, album/artist names), display/titleLarge/titleSmall 600,
-primary text (bodyLarge, titleMedium, labels) 500, secondary text (bodyMedium/Small) 400. The playing row
-uses the same weights as the others (only tint + equaliser mark mark it). List rows and album grid tiles share one
-pair: title bodyLarge, subtitle bodyMedium in onSurfaceVariant (the grid once used titleSmall/bodySmall and
-looked off next to the other tabs). Album page header: title titleLarge (max 2 lines; headline size
-made long titles a huge block, owner said the sizes felt wrong), artist titleMedium in primary, info bodyMedium. Letter spacing defaults to **0** for every style (Material's +0.1..+0.5sp
-body/title tracking looked stretched and "eccentric" to the owner next to Metro/Musify); only the
-letter-spacing setting changes it. Prefer the style's weight over an explicit `fontWeight`, so
+Text styles are **stock Material 3** (the shared kit's `kitTypography`): Aria's own tuned weights (700/600/500/400,
+0 letter spacing, 0.92× size) were rolled out to all four apps in Nov 2026 and the owner found them off at normal
+screen density, so every app went back to Material's type scale. The font settings apply on top. Prefer the style's weight over an explicit `fontWeight`, so
 the weight slider still applies. "Reset to
 defaults" lives in the ⋮ menu behind a confirmation dialog (the owner didn't want it one tap away).
 
@@ -281,7 +275,7 @@ same signing key (shared keystore), so never change it.
 - Tapping the artist name on now playing (big view and lyrics header) opens the artist. The mini
   player's text is not separately tappable: a tap anywhere on it opens the player.
 - Back with lyrics open closes the lyrics (cover morphs back) before closing the player.
-- Fonts slightly smaller than M3 defaults. Artist names must never clip.
+- Artist names must never clip. Text sizes are Material 3's defaults (owner, Nov 2026).
 - Motion: fluid, shared-axis / container transforms, not plain fades.
 - Pinned albums (long-press an album) show first.
 - Folder include **and** exclude rules together; the most specific wins.
