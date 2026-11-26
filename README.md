@@ -17,7 +17,7 @@ Every push to `main` publishes a numbered release with its changes listed. Build
 ## What's in it
 
 - **Material 3 + AMOLED.** Wallpaper colours (Material You), pure black dark theme, light/dark/system, adjustable corner roundness.
-- **Any Google Font.** Pick from a shortlist or type any family name from fonts.google.com.
+- **Any Google Font.** Search every Google Font, previewed in itself, then adjust size, weight and letter spacing.
 - **Home-screen widget.** Blurred-artwork backdrop. Resizes from 2×2 (art + play) to 4×2 and 4×4 (art, titles, controls). Plain RemoteViews pushed straight from the player, so it's light and works after a reboot without opening the app.
 - **Sleep timer.** Fades out, or waits for the current song to finish. Extend by +10 min.
 - **Folder include/exclude.** Whitelist and blacklist together; the most specific rule wins.
@@ -27,6 +27,7 @@ Every push to `main` publishes a numbered release with its changes listed. Build
 - **Artist photos.** Matched through the albums you own (so it's the right Adele). Tap to zoom; pick another online photo, one from your gallery, or keep album art.
 - **Pinned albums**, a draggable queue, real shuffle, sorting on every tab, fast scroller, Material 3 Expressive motion.
 - Songs / Albums / Artists, search, shuffle/repeat. Remembers the queue and position across restarts. Headset play button resumes the last session.
+- **In-app updates.** A card under the search bar when a new version is out; one tap downloads and installs it.
 
 <details>
 <summary><b>More screenshots</b></summary>
@@ -37,6 +38,21 @@ Every push to `main` publishes a numbered release with its changes listed. Build
   <img src="docs/screenshots/settings.jpg" width="32%" alt="Settings" />
 </p>
 </details>
+
+## Part of a family
+
+<p align="center"><img src="docs/family.png" width="420" alt="Aria, Minutia, Hiatus and Regista icons" /></p>
+
+Four small Android apps built to look and behave like one set: same icon palette, Material 3 Expressive with your
+wallpaper's colours, pure black mode, any Google Font for the app, the same settings layout, and in-app updates
+from GitHub Releases.
+
+| | |
+|---|---|
+| [**Aria**](https://github.com/savar95x/aria-player) | Music player for your local files |
+| [**Minutia**](https://github.com/savar95x/minutia) | Clock widget where every detail is yours |
+| [**Hiatus**](https://github.com/savar95x/hiatus) | How long you've been away from your phone |
+| [**Regista**](https://github.com/savar95x/regista) | Reminders for the football matches you care about |
 
 ## Building
 
