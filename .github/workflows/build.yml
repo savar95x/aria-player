@@ -3,6 +3,10 @@ name: Build
 on:
   push:
     branches: [main]
+    # README and docs-only pushes don't build or publish a release (same as Minutia, Hiatus and Regista).
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
   pull_request:
   workflow_dispatch:
 

@@ -40,7 +40,7 @@ Principles the owner has stated:
 
 ## How the owner works with you
 
-- Every push to `main` is built by CI and published as a GitHub release `v1.1.<n>` (version scheme in
+- Every push to `main` that touches more than `*.md` / `docs/**` is built by CI and published as a GitHub release `v1.1.<n>` (version scheme in
   `gradle.properties`: `aria.version` + run number minus `aria.versionBase`; 1.0.0 shipped 2026-11-15,
   the owner's "daily driver" milestone; 1.1.0 on 2026-11-16 after the Retro-style player sheet). Commit subjects become the release notes. The owner installs from the Releases page and reports back,
   often with screenshots or screen recordings. **Ship by pushing to `main`**; no PRs or branches needed.
@@ -153,7 +153,7 @@ dev/savar/kit/         Shared kit, byte-identical in all four apps (updater, upd
                        SearchScreen, PlayerScreens (now playing, mini player, seek bar), QueueSheet, LyricsPane, TagEditor, Settings, Fonts (font page +
                        Typeface picker), ArtistPhotoViewer
 tools/verify_apk.py    Static APK checks (see Building)
-docs/                  README images (hero.png is a composite made with Pillow from docs/screenshots)
+docs/                  README images: docs/screenshots (owner's phone screenshots, 540px WebP), family.png
 ```
 
 ## Things to know before touching an area

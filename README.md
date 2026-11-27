@@ -10,7 +10,11 @@
   <a href="https://github.com/savar95x/aria-player/releases">All releases</a>
 </p>
 
-<p align="center"><img src="docs/hero.png" width="100%" alt="Albums, now playing and synced lyrics" /></p>
+<p align="center">
+  <img src="docs/screenshots/songs.webp" width="270" alt="Songs tab with the search bar, mini player and navigation" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/lyrics.webp" width="270" alt="Now playing with synced lyrics" />
+</p>
 
 Every push to `main` publishes a numbered release with its changes listed. Builds share a signing key, so each one installs over the last.
 
@@ -29,15 +33,6 @@ Every push to `main` publishes a numbered release with its changes listed. Build
 - Songs / Albums / Artists, search, shuffle/repeat. Remembers the queue and position across restarts. Headset play button resumes the last session.
 - **In-app updates.** A card under the search bar when a new version is out; one tap downloads and installs it.
 
-<details>
-<summary><b>More screenshots</b></summary>
-<br/>
-<p align="center">
-  <img src="docs/screenshots/songs.jpg" width="32%" alt="Songs" />
-  &nbsp;&nbsp;
-  <img src="docs/screenshots/settings.jpg" width="32%" alt="Settings" />
-</p>
-</details>
 
 ## Part of a family
 
